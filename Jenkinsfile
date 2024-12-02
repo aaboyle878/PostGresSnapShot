@@ -1,17 +1,18 @@
 pipeline {
     agent any
-    environment {
-        AWS_REGION = 'your-aws-region' // e.g., us-west-2
-        S3_BUCKET = 'your-s3-bucket-name'
-        EC2_HOST = 'your-ec2-instance-ip'
-        SSH_KEY_CRED = 'jenkins-ssh-key-id' // Jenkins credentials for SSH
+    parameters {
+        string(name: 'AWS_REGION', defaultValue: 'us-east-1', description: 'Region of the S3 bucket')
+        string(name: 'EC2_REGION', defaultValue: 'eu-west-1', description: 'Region of the EC2 instance')
+        string(name: 'S3_BUCKET', defaultValue: 'statefile-remote-be', description: 'Name of the S3 bucket')
+        string(name: 'EC2_HOST', defaultValue: 'ec2-63-33-156-75.eu-west-1.compute.amazonaws.com', description: 'EC2 instance hostname or IP')
+        credentials(name: 'SSH_KEY_CRED', credentialType: 'SSHUserPrivateKey', description: 'Jenkins credentials for SSH')
     }
     stages {
         stage('SSH to EC2 Instance') {
             steps {
                 sshagent(credentials: [env.SSH_KEY_CRED]) {
                     sh """
-                    ssh -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "echo 'Connected to EC2 instance.'"
+                    ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} "echo 'Connected to EC2 instance.'"
                     """
                 }
             }
@@ -20,7 +21,8 @@ pipeline {
             steps {
                 sshagent(credentials: [env.SSH_KEY_CRED]) {
                     sh """
-                    ssh -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} "which pg_basebackup || sudo yum install -y postgresql*"
+                    ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                    "which pg_basebackup || sudo apt-get update && sudo apt-get install -y postgresql-client"
                     """
                 }
             }
@@ -31,7 +33,7 @@ pipeline {
                     script {
                         def backupDir = "/tmp/postgres_backup"
                         sh """
-                        ssh -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} \\
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
                         "pg_basebackup -D ${backupDir} -Ft -z -X fetch -v"
                         """
                         env.BACKUP_DIR = backupDir
@@ -44,7 +46,7 @@ pipeline {
                 sshagent(credentials: [env.SSH_KEY_CRED]) {
                     script {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} \\
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
                         "test -d ${env.BACKUP_DIR} && echo 'Backup verification successful.'"
                         """
                     }
@@ -57,7 +59,7 @@ pipeline {
                     script {
                         def backupFile = "postgres_backup_$(date +%Y%m%d%H%M%S).tar.gz"
                         sh """
-                        ssh ec2-user@${EC2_HOST} \\
+                        ssh ubuntu@${EC2_HOST} \\
                         "aws s3 cp ${env.BACKUP_DIR}.tar.gz s3://${S3_BUCKET}/${backupFile} --region ${AWS_REGION}"
                         """
                         env.BACKUP_FILE = backupFile
@@ -81,7 +83,7 @@ pipeline {
     post {
         always {
             sshagent(credentials: [env.SSH_KEY_CRED]) {
-                sh "ssh ec2-user@${EC2_HOST} 'rm -rf ${env.BACKUP_DIR}'"
+                sh "ssh ubuntu@${EC2_HOST} 'rm -rf ${env.BACKUP_DIR}'"
             }
         }
     }
