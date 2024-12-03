@@ -96,6 +96,15 @@ pipeline {
             steps {
                 retry(2) {
                     script {
+                        // Install aws-cli if not present
+                        sh '''
+                        if ! command -v aws &> /dev/null
+                        then
+                            echo "aws-cli not found, installing..."
+                            sudo apt-get update
+                            sudo apt-get install -y awscli
+                        fi
+                        '''
                         def s3_check = sh(script: """
                         aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${env.BACKUP_FILE}.tar.gz --region ${AWS_REGION}
                         """, returnStatus: true)
