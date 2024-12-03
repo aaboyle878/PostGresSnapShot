@@ -109,10 +109,10 @@ pipeline {
         }
     }
   ///  post {
-        always {
-            sshagent(credentials: ['SSH_KEY_CRED']) {
-                sh "ssh ubuntu@${EC2_HOST} 'rm -rf ${env.BACKUP_DIR}'"
-            }
-        }
-    }
+       // always {
+         //   sshagent(credentials: ['SSH_KEY_CRED']) {
+           //     sh "ssh ubuntu@${EC2_HOST} 'rm -rf ${env.BACKUP_DIR}'"
+           // }
+        //}
+    //}
 ///}
