@@ -12,11 +12,6 @@ pipeline {
         TAR_FILE = "/tmp/postgres_backup.tar.gz"
     }
     stages {
-        stage('Checkout Code from Git') {
-            steps {
-                git branch: 'main', url: 'git@github.com:aaboyle878/PostGresSnapShot.git'
-            }
-        }
         stage('SSH to EC2 Instance') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
