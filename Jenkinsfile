@@ -7,6 +7,10 @@ pipeline {
         string(name: 'EC2_HOST', defaultValue: 'ec2-100-27-119-149.compute-1.amazonaws.com', description: 'EC2 instance hostname or IP')
         string(name: 'NETWORK', defaultValue: 'Sanchonet', description: 'Name of Instance we are taking the snapshot from')
     }
+    environment {
+        BACKUP_DIR = "/tmp/postgres_backup"
+        TAR_FILE = "/tmp/postgres_backup.tar.gz"
+    }
     stages {
         stage('Checkout Code from Git') {
             steps {
@@ -16,32 +20,22 @@ pipeline {
         stage('SSH to EC2 Instance') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} "echo 'Connected to EC2 instance.'"
-                    """
-                }
-            }
-        }
-        stage('Check pg_basebackup Installation') {
-            steps {
-                sshagent(credentials: ['SSH_KEY_CRED']) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                    "which pg_basebackup || sudo apt-get update && sudo apt-get install -y postgresql-client"
-                    """
+                    retry(2) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} "echo 'Connected to EC2 instance.'"
+                        """
+                    }
                 }
             }
         }
         stage('Prepare Backup Directory') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
-                    script {
-                        def backupDir = "/tmp/postgres_backup" // Define backup directory variable
+                    retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "mkdir -p ${backupDir} && echo 'Backup directory created or already exists.'"
+                        "mkdir -p ${BACKUP_DIR} && echo 'Backup directory created or already exists.'"
                         """
-                        env.BACKUP_DIR = backupDir // Set environment variable for backup directory
                     }
                 }
             }
@@ -49,94 +43,75 @@ pipeline {
         stage('Take PostgreSQL Snapshot') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
-                    script {
-                        def backupDir = "/tmp/postgres_backup"
+                    retry(3) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "pg_basebackup -D ${backupDir} -Ft -z -X fetch -v"
+                        "pg_basebackup -D ${BACKUP_DIR} -Ft -z -X fetch -v"
                         """
-                        env.BACKUP_DIR = backupDir
                     }
                 }
-            }
-        }
-        stage('Pause 1') {
-            steps {
-                echo 'Pausing for 10 seconds...'
-                sleep time: 10, unit: 'SECONDS'
             }
         }
         stage('Verify Backup') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
-                    script {
+                    retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "test -d ${env.BACKUP_DIR} && echo 'Backup verification successful.'"
+                        "test -d ${BACKUP_DIR} && echo 'Backup verification successful.'"
                         """
                     }
                 }
             }
         }
-        stage('Pause 2') {
-            steps {
-                echo 'Pausing for 10 seconds...'
-                sleep time: 10, unit: 'SECONDS'
-            }
-        }
         stage('Create Backup Tarball') {
             steps {
-                sshagent(['SSH_KEY_CRED']) {
-                    sh '''
-                    tar -czf /tmp/postgres_backup.tar.gz /tmp/postgres_backup && echo 'Backup tarball created.'
-                    '''
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    retry(2) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        "tar -czf ${TAR_FILE} ${BACKUP_DIR} && echo 'Backup tarball created.'"
+                        """
+                    }
                 }
-            }
-        }
-        stage('Pause 3') {
-            steps {
-                echo 'Pausing for 10 seconds...'
-                sleep time: 10, unit: 'SECONDS'
             }
         }
         stage('Upload Backup to S3') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
-                    script {
-                        def backupFile = sh(script: "echo postgres_backup_\$(date +%Y)", returnStdout: true).trim()
-                        sh """
-                        ssh ubuntu@${EC2_HOST} \\
-                        "aws s3 cp ${env.BACKUP_DIR}.tar.gz s3://${S3_BUCKET}/${NETWORK}/${backupFile} --region ${AWS_REGION}"
-                        """
-                        env.BACKUP_FILE = backupFile
+                    retry(3) {
+                        script {
+                            def backupFile = sh(script: "echo postgres_backup_\$(date +%Y)", returnStdout: true).trim()
+                            sh """
+                            ssh ubuntu@${EC2_HOST} \\
+                            "aws s3 cp ${TAR_FILE} s3://${S3_BUCKET}/${NETWORK}/${backupFile}.tar.gz --region ${AWS_REGION}"
+                            """
+                            env.BACKUP_FILE = backupFile
+                        }
                     }
                 }
             }
         }
-        stage('Pause 4') {
-            steps {
-                echo 'Pausing for 10 seconds...'
-                sleep time: 10, unit: 'SECONDS'
-            }
-        }
         stage('Verify S3 Upload') {
             steps {
-                script {
-                    def s3_check = sh(script: """
-                    aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${backupFile} --region ${AWS_REGION}
-                    """, returnStatus: true)
-                    if (s3_check != 0) {
-                        error "S3 upload verification failed."
+                retry(2) {
+                    script {
+                        def s3_check = sh(script: """
+                        aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${env.BACKUP_FILE}.tar.gz --region ${AWS_REGION}
+                        """, returnStatus: true)
+                        if (s3_check != 0) {
+                            error "S3 upload verification failed."
+                        }
                     }
                 }
             }
         }
     }
-  ///  post {
-       // always {
-         //   sshagent(credentials: ['SSH_KEY_CRED']) {
-           //     sh "ssh ubuntu@${EC2_HOST} 'rm -rf ${env.BACKUP_DIR}'"
-           // }
-        //}
-    //}
+    post {
+        always {
+            sshagent(credentials: ['SSH_KEY_CRED']) {
+                sh "ssh ubuntu@${EC2_HOST} 'rm -rf ${BACKUP_DIR} ${TAR_FILE}'"
+            }
+        }
+    }
 }
