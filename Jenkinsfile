@@ -94,14 +94,16 @@ pipeline {
         }
         stage('Verify S3 Upload') {
             steps {
-                retry(2) {
-                    script {
-                        def s3_check = sh(script: """
-                        ssh ubuntu@${EC2_HOST} \\
-                        aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${env.BACKUP_FILE}.tar.gz --region ${AWS_REGION}
-                        """, returnStatus: true)
-                        if (s3_check != 0) {
-                            error "S3 upload verification failed."
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    retry(2) {
+                        script {
+                            def s3_check = sh(script: """
+                            ssh ubuntu@${EC2_HOST} \\
+                            aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${env.BACKUP_FILE}.tar.gz --region ${AWS_REGION}
+                            """, returnStatus: true)
+                            if (s3_check != 0) {
+                                error "S3 upload verification failed."
+                            }
                         }
                     }
                 }
