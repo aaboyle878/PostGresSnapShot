@@ -76,7 +76,7 @@ pipeline {
             steps {
                 sshagent(['SSH_KEY_CRED']) {
                     sh '''
-                    tar -czf /tmp/postgres_backup.tar.gz -C /tmp postgres_backup && echo 'Backup tarball created.'
+                    tar -czf /tmp/postgres_backup.tar.gz /tmp/postgres_backup && echo 'Backup tarball created.'
                     '''
                 }
             }
