@@ -32,6 +32,20 @@ pipeline {
                 }
             }
         }
+        stage('Prepare Backup Directory') {
+            steps {
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    script {
+                        def backupDir = "/tmp/postgres_backup" // Define backup directory variable
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        "mkdir -p ${backupDir} && echo 'Backup directory created or already exists.'"
+                        """
+                        env.BACKUP_DIR = backupDir // Set environment variable for backup directory
+                    }
+                }
+            }
+        }
         stage('Take PostgreSQL Snapshot') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
