@@ -9,6 +9,11 @@ pipeline {
         credentials(name: 'SSH_KEY_CRED', credentialType: 'SSHUserPrivateKey', description: 'Jenkins credentials for SSH')
     }
     stages {
+        stage('Checkout Code from Git') {
+            steps {
+                git branch: 'main', url: 'git@github.com:aaboyle878/PostGresSnapShot.git'
+            }
+        }
         stage('SSH to EC2 Instance') {
             steps {
                 sshagent(credentials: [env.SSH_KEY_CRED]) {
