@@ -72,7 +72,7 @@ pipeline {
             steps {
                 script {
                     def s3_check = sh(script: """
-                    aws s3 ls s3://${S3_BUCKET}/${env.BACKUP_FILE} --region ${AWS_REGION}
+                    aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${backupFile} --region ${AWS_REGION}
                     """, returnStatus: true)
                     if (s3_check != 0) {
                         error "S3 upload verification failed."
