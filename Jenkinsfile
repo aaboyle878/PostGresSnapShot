@@ -58,7 +58,7 @@ pipeline {
             steps {
                 sshagent(credentials: [env.SSH_KEY_CRED]) {
                     script {
-                        def backupFile = "postgres_backup_$(date +%Y%m%d%H%M%S).tar.gz"
+                        def backupFile = sh(script: "echo postgres_backup_$(date +%Y)", returnStdout: true).trim()
                         sh """
                         ssh ubuntu@${EC2_HOST} \\
                         "aws s3 cp ${env.BACKUP_DIR}.tar.gz s3://${S3_BUCKET}/${NETWORK}/${backupFile} --region ${AWS_REGION}"
