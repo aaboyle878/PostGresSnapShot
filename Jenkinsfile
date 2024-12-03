@@ -72,6 +72,15 @@ pipeline {
                 }
             }
         }
+        stage('Create Backup Tarball') {
+            steps {
+                sshagent(['ubuntu']) {
+                    sh '''
+                    tar -czf /tmp/postgres_backup.tar.gz -C /tmp postgres_backup && echo 'Backup tarball created.'
+                    '''
+                }
+            }
+        }
         stage('Upload Backup to S3') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
