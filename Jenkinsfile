@@ -60,7 +60,7 @@ pipeline {
                 }
             }
         }
-        stage('Pause') {
+        stage('Pause 1') {
             steps {
                 echo 'Pausing for 10 seconds...'
                 sleep time: 10, unit: 'SECONDS'
@@ -78,7 +78,7 @@ pipeline {
                 }
             }
         }
-        stage('Pause') {
+        stage('Pause 2') {
             steps {
                 echo 'Pausing for 10 seconds...'
                 sleep time: 10, unit: 'SECONDS'
@@ -93,7 +93,7 @@ pipeline {
                 }
             }
         }
-        stage('Pause') {
+        stage('Pause 3') {
             steps {
                 echo 'Pausing for 10 seconds...'
                 sleep time: 10, unit: 'SECONDS'
@@ -111,6 +111,12 @@ pipeline {
                         env.BACKUP_FILE = backupFile
                     }
                 }
+            }
+        }
+        stage('Pause 4') {
+            steps {
+                echo 'Pausing for 10 seconds...'
+                sleep time: 10, unit: 'SECONDS'
             }
         }
         stage('Verify S3 Upload') {
