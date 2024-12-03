@@ -60,6 +60,12 @@ pipeline {
                 }
             }
         }
+        stage('Pause') {
+            steps {
+                echo 'Pausing for 10 seconds...'
+                sleep time: 10, unit: 'SECONDS'
+            }
+        }
         stage('Verify Backup') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
@@ -72,6 +78,12 @@ pipeline {
                 }
             }
         }
+        stage('Pause') {
+            steps {
+                echo 'Pausing for 10 seconds...'
+                sleep time: 10, unit: 'SECONDS'
+            }
+        }
         stage('Create Backup Tarball') {
             steps {
                 sshagent(['SSH_KEY_CRED']) {
@@ -79,6 +91,12 @@ pipeline {
                     tar -czf /tmp/postgres_backup.tar.gz /tmp/postgres_backup && echo 'Backup tarball created.'
                     '''
                 }
+            }
+        }
+        stage('Pause') {
+            steps {
+                echo 'Pausing for 10 seconds...'
+                sleep time: 10, unit: 'SECONDS'
             }
         }
         stage('Upload Backup to S3') {
