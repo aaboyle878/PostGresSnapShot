@@ -56,7 +56,7 @@ pipeline {
                     retry(3) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "pg_basebackup -D ${BACKUP_DIR} -Ft -z -X fetch -v"
+                        "pg_basebackup -D ${BACKUP_DIR} -Ft -z -X stream --create-slot --slot=backup_slot -v"
                         """
                     }
                 }
@@ -115,6 +115,18 @@ pipeline {
                                 error "S3 upload verification failed."
                             }
                         }
+                    }
+                }
+            }
+        }
+        stage('Remove Replication Slot') {
+            steps {
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    retry(2) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        "psql -c 'SELECT pg_drop_replication_slot(\'backup_slot\');' && echo 'Replication slot removed successfully.'"
+                        """
                     }
                 }
             }
