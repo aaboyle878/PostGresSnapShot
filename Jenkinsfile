@@ -123,7 +123,7 @@ pipeline {
     post {
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
-                sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR} ${TAR_FILE}'"
+                sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${BACKUP_DIR}'"
             }
         }
     }
