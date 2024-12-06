@@ -41,7 +41,10 @@ pipeline {
                     retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "sudo mount /dev/nvme2n1 ${BACKUP_DIR} && echo 'EBS Successfully Mounted.'"
+                        "sudo mount /dev/nvme2n1 ${BACKUP_DIR} &&
+                        sudo chown -R ubuntu:ubuntu /tmp/postgres_backup &&
+                        sudo chmod -R 755 /tmp/postgres_backup &&
+                        echo 'EBS Successfully Mounted and permissions have been set.'"
                         """
                     }
                 }
@@ -120,7 +123,7 @@ pipeline {
     post {
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
-                sh "ssh ubuntu@${EC2_HOST} 'rm -rf ${BACKUP_DIR} ${TAR_FILE}'"
+                sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR} ${TAR_FILE}'"
             }
         }
     }
