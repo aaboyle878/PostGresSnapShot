@@ -35,6 +35,18 @@ pipeline {
                 }
             }
         }
+        stage('Mount EBS Volume') {
+            steps {
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    retry(2) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        "sudo mount /dev/nvme2n1 ${BACKUP_DIR} && echo 'EBS Successfully Mounted.'"
+                        """
+                    }
+                }
+            }
+        }
         stage('Take PostgreSQL Snapshot') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
