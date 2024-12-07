@@ -119,11 +119,23 @@ pipeline {
                 }
             }
         }
+        stage('Remove Replication Slot') {
+            steps {
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    retry(2) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        "psql -c 'SELECT pg_drop_replication_slot(\'backup_slot\');' && echo 'Replication slot removed successfully.'"
+                        """
+                    }
+                }
+            }
+        }
     }
     post {
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
-                sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${BACKUP_DIR} && psql -c 'SELECT pg_drop_replication_slot(\'backup_slot\');' && echo 'Replication slot removed successfully.'"
+                sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${BACKUP_DIR}'"
             }
         }
     }
