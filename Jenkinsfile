@@ -9,7 +9,7 @@ pipeline {
     }
     environment {
         BACKUP_DIR = "/tmp/postgres_backup"
-        TAR_FILE = "/tmp/postgres_backup.tar.gz"
+        TAR_FILE = "/opt/cardano/postgres_backup.tar.gz"
     }
     stages {
         stage('SSH to EC2 Instance') {
