@@ -8,8 +8,9 @@ pipeline {
         string(name: 'NETWORK', defaultValue: 'Mainnet', description: 'Name of Instance we are taking the snapshot from')
     }
     environment {
-        BACKUP_DIR = "/tmp/postgres_backup"
-        TAR_FILE = "/opt/cardano/postgres_backup.tar.gz"
+        BACKUP_DIR = "/tmp/postgres_backup/snapshot"
+        TAR_FILE = "/tmp/postgres_backup/postgres_backup.tar.gz"
+        MOUNT_POINT = "/tmp/postgres_backup"
     }
     stages {
         stage('SSH to EC2 Instance') {
@@ -23,13 +24,13 @@ pipeline {
                 }
             }
         }
-        stage('Prepare Backup Directory') {
+        stage('Prepare Mount Directory') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "mkdir -p ${BACKUP_DIR} && echo 'Backup directory created or already exists.'"
+                        "mkdir -p ${MOUNT_POINT} && echo 'Backup directory created or already exists.'"
                         """
                     }
                 }
@@ -41,10 +42,22 @@ pipeline {
                     retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "sudo mount /dev/nvme2n1 ${BACKUP_DIR} &&
+                        "sudo mount /dev/nvme2n1 ${MOUNT_POINT} &&
                         sudo chown -R ubuntu:ubuntu /tmp/postgres_backup &&
                         sudo chmod -R 755 /tmp/postgres_backup &&
                         echo 'EBS Successfully Mounted and permissions have been set.'"
+                        """
+                    }
+                }
+            }
+        }
+        stage('Prepare Mount Directory') {
+            steps {
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    retry(2) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        "mkdir -p ${BACKUP_DIR} && echo 'Backup directory created or already exists.'"
                         """
                     }
                 }
@@ -135,7 +148,7 @@ pipeline {
     post {
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
-                sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${BACKUP_DIR}'"
+                sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${MOUNT_POINT}'"
             }
         }
     }
