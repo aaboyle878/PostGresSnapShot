@@ -5,12 +5,15 @@ pipeline {
         string(name: 'EC2_REGION', defaultValue: 'eu-west-1', description: 'Region of the EC2 instance')
         string(name: 'S3_BUCKET', defaultValue: 'statefile-remote-be', description: 'Name of the S3 bucket')
         string(name: 'EC2_HOST', defaultValue: 'ec2-63-33-156-75.eu-west-1.compute.amazonaws.com', description: 'EC2 instance hostname or IP')
+        string(name: 'INSTANCE_ID', defaultValue: 'i-0d876e5f58afd60aa', description: 'EC2 instance ID')
         string(name: 'NETWORK', defaultValue: 'Mainnet', description: 'Name of Instance we are taking the snapshot from')
+        string(name: 'VOLUME_SIZE', defaultValue: '1000', description: 'Size of EBS volume in GB')
     }
     environment {
         BACKUP_DIR = "/tmp/postgres_backup/snapshot"
         TAR_FILE = "/tmp/postgres_backup/postgres_backup.tar.gz"
         MOUNT_POINT = "/tmp/postgres_backup"
+        DEVICE_NAME = "/dev/nvme2n1"
     }
     stages {
         stage('SSH to EC2 Instance') {
@@ -36,22 +39,40 @@ pipeline {
                 }
             }
         }
+        stage('Provision EBS Volume') {
+            steps {
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    script {
+                        def volumeId = sh(script: """
+                            aws ec2 create-volume --size ${params.VOLUME_SIZE} --volume-type gp2 --availability-zone eu-west-1b --region ${AWS_REGION} --query 'VolumeId' --output text
+                        """, returnStdout: true).trim()
+                        echo "Created EBS Volume: ${volumeId}"
+                        sh """
+                            aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${params.INSTANCE_ID} --device ${DEVICE_NAME} --region ${AWS_REGION}
+                        """
+                        echo "Attached EBS Volume: ${volumeId} to instance: ${params.INSTANCE_ID}"
+                        env.VOLUME_ID = volumeId
+                    }
+                }
+            }
+        }
         stage('Mount EBS Volume') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "sudo mount /dev/nvme2n1 ${MOUNT_POINT} &&
-                        sudo chown -R ubuntu:ubuntu /tmp/postgres_backup &&
-                        sudo chmod -R 755 /tmp/postgres_backup &&
+                        "sudo mkfs -t xfs ${DEVICE_NAME} &&
+                        sudo mount ${DEVICE_NAME} ${MOUNT_POINT} &&
+                        sudo chown -R ubuntu:ubuntu ${MOUNT_POINT} &&
+                        sudo chmod -R 755 ${MOUNT_POINT} &&
                         echo 'EBS Successfully Mounted and permissions have been set.'"
                         """
                     }
                 }
             }
         }
-        stage('Prepare Mount Directory') {
+        stage('Prepare Snapshot Directory') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
