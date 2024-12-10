@@ -1,12 +1,6 @@
 pipeline {
     agent any
     parameters {
-        string(name: 'AWS_REGION', defaultValue: 'us-east-1', description: 'Region of the S3 bucket')
-        string(name: 'EC2_REGION', defaultValue: 'eu-west-1', description: 'Region of the EC2 instance')
-        string(name: 'S3_BUCKET', defaultValue: 'statefile-remote-be', description: 'Name of the S3 bucket')
-        string(name: 'EC2_HOST', defaultValue: 'ec2-63-33-156-75.eu-west-1.compute.amazonaws.com', description: 'EC2 instance hostname or IP')
-        string(name: 'INSTANCE_ID', defaultValue: 'i-0d876e5f58afd60aa', description: 'EC2 instance ID')
-        string(name: 'NETWORK', defaultValue: 'Mainnet', description: 'Name of Instance we are taking the snapshot from')
         string(name: 'VOLUME_SIZE', defaultValue: '1000', description: 'Size of EBS volume in GB')
     }
     environment {
@@ -16,6 +10,28 @@ pipeline {
         DEVICE_NAME = "/dev/nvme2n1"
     }
     stages {
+         stage('Retrieve Secrets') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION'),
+                    string(credentialsId: 'EC2_REGION', variable: 'EC2_REGION')
+                    string(credentialsId: 'S3_BUCKET', variable: 'S3_BUCKET'),
+                    string(credentialsId: 'EC2_HOST', variable: 'EC2_HOST'),
+                    string(credentialsId: 'INSTANCE_ID', variable: 'INSTANCE_ID'),
+                    string(credentialsId: 'NETWORK', variable: 'NETWORK')
+                ]) {
+                    script {
+                        // Print masked values for debugging (optional)
+                        echo "AWS Region: ${AWS_REGION} (retrieved from secret)"
+                        echo "AWS Region: ${EC2_REGION} (retrieved from secret)"
+                        echo "S3 Bucket: ${S3_BUCKET} (retrieved from secret)"
+                        echo "EC2 Host: ${EC2_HOST} (retrieved from secret)"
+                        echo "Instance ID: ${INSTANCE_ID} (retrieved from secret)"
+                        echo "AWS Region: ${NETWORK} (retrieved from secret)"
+                    }
+                }
+            }
+        }
         stage('SSH to EC2 Instance') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
