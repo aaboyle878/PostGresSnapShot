@@ -170,6 +170,11 @@ pipeline {
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
                 sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${MOUNT_POINT}'"
+                sh """
+                    aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION}
+                    aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION}
+                """
+                echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
             }
         }
     }
