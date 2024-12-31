@@ -9,6 +9,8 @@ pipeline {
         MOUNT_POINT = "/tmp/postgres_backup"
         DEVICE_NAME = "/dev/nvme2n1"
         SLACK_CHANNEL = '#jenkins-notifications' 
+        TOKEN_CREATION_TIME = ''
+        TOKEN_TTL_SECONDS = 3600
     }
     stages {
          stage('Retrieve Secrets') {
@@ -45,28 +47,23 @@ pipeline {
         stage('Retrieve AWS Session Token') {
             steps {
                 script {
-                    def token = sh(script: '''
-                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" http://169.254.169.254/latest/api/token
-                    ''', returnStdout: true).trim()
+                    def getToken = {
+                        def token = sh(script: '''
+                            curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: ${TOKEN_TTL_SECONDS}" http://169.254.169.254/latest/api/token
+                        ''', returnStdout: true).trim()
 
-                    if (token) {
-                        echo "Session Token: ${token}"
+                        if (!token) {
+                            error "Failed to retrieve session token."
+                        }
+
+                        echo "Session Token Retrieved"
                         env.AWS_METADATA_TOKEN = token
-
-                        def roleName = sh(script: """
-                            curl -H "X-aws-ec2-metadata-token: ${token}" http://169.254.169.254/latest/meta-data/iam/security-credentials/
-                        """, returnStdout: true).trim()
-
-                        echo "Role Name: ${roleName}"
-                        
-                        def credentials = sh(script: """
-                            curl -H "X-aws-ec2-metadata-token: ${token}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${roleName}
-                        """, returnStdout: true).trim()
-
-                        echo "IAM Credentials: ${credentials}"
-                    } else {
-                        error "Failed to retrieve session token."
+                        env.TOKEN_CREATION_TIME = System.currentTimeMillis().toString()
+                        return token
                     }
+
+                    // Initial token retrieval
+                    getToken()
                 }
             }
         }
@@ -74,15 +71,37 @@ pipeline {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     script {
-                        // Fetch IAM role credentials using metadata token
+                        def checkAndRenewToken = {
+                            def currentTime = System.currentTimeMillis()
+                            def tokenCreationTime = env.TOKEN_CREATION_TIME.toLong()
+
+                            if ((currentTime - tokenCreationTime) / 1000 >= env.TOKEN_TTL_SECONDS - 300) {
+                                echo "Token nearing expiration. Renewing..."
+                                def newToken = sh(script: '''
+                                    curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: ${TOKEN_TTL_SECONDS}" http://169.254.169.254/latest/api/token
+                                ''', returnStdout: true).trim()
+
+                                if (!newToken) {
+                                    error "Failed to renew session token."
+                                }
+
+                                echo "Token successfully renewed."
+                                env.AWS_METADATA_TOKEN = newToken
+                                env.TOKEN_CREATION_TIME = System.currentTimeMillis().toString()
+                            }
+                        }
+
+                        // Check and renew token before provisioning volume
+                        checkAndRenewToken()
+
                         def creds = sh(script: """
                             curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${IAM_ROLE}
                         """, returnStdout: true).trim()
 
                         // Extract AWS credentials
-                        def accessKeyId = sh(script: "echo ${creds} | jq -r .AccessKeyId", returnStdout: true).trim()
-                        def secretAccessKey = sh(script: "echo ${creds} | jq -r .SecretAccessKey", returnStdout: true).trim()
-                        def sessionToken = sh(script: "echo ${creds} | jq -r .Token", returnStdout: true).trim()
+                        def accessKeyId = sh(script: "echo '${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
+                        def secretAccessKey = sh(script: "echo '${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
+                        def sessionToken = sh(script: "echo '${creds}' | jq -r .Token", returnStdout: true).trim()
 
                         // Set the AWS credentials for the session
                         env.AWS_ACCESS_KEY_ID = accessKeyId
