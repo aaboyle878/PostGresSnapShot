@@ -150,19 +150,17 @@ pipeline {
                     echo "Current environment: ${env}"
 
                     // Assign the first device to DEVICE_NAME
-                    def selectedDevice = "/dev/${nvme_devices[0]}"
-                    echo "Selected device for mounting: ${selectedDevice}"
-
-                    // Use withEnv to ensure the value is set properly
-                    withEnv(["DEVICE_NAME=${selectedDevice}"]) {
-                        echo "DEVICE_NAME in the next scope: ${env.DEVICE_NAME}"
-                    }
-
-                    // Check again outside the withEnv block
-                    if (!selectedDevice) {
-                        error "Failed to assign DEVICE_NAME."
+                    if (!nvme_devices.isEmpty()) {
+                        env.DEVICE_NAME = "/dev/${nvme_devices[0]}"
+                        echo "Selected device for mounting: ${env.DEVICE_NAME}"
+                    } else {
+                        error "No valid NVMe devices found (excluding nvme0n1 and nvme1n1)."
                     }
                 }
+
+                // Use DEVICE_NAME outside of withEnv to ensure it's passed to the next stage
+                echo "DEVICE_NAME in next scope: ${env.DEVICE_NAME}"
+                
             }
         }
         stage('Verify Device Name') {
