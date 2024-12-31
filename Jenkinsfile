@@ -162,7 +162,7 @@ pipeline {
                         error "env.DEVICE_NAME assignment failed."
                     }
                     echo "Selected device for mounting: ${env.DEVICE_NAME}"
-                
+                }
             }
         }
         stage('Verify Device Name') {
@@ -334,5 +334,6 @@ pipeline {
                     echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
                 }
             }
+        }
     }
-}
+} 
