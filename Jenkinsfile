@@ -14,7 +14,7 @@ pipeline {
             steps {
                 withCredentials([
                     string(credentialsId: 'AWS_REGION', variable: 'AWS_REGION'),
-                    string(credentialsId: 'EC2_REGION', variable: 'EC2_REGION')
+                    string(credentialsId: 'EC2_REGION', variable: 'EC2_REGION'),
                     string(credentialsId: 'S3_BUCKET', variable: 'S3_BUCKET'),
                     string(credentialsId: 'EC2_HOST', variable: 'EC2_HOST'),
                     string(credentialsId: 'INSTANCE_ID', variable: 'INSTANCE_ID'),
