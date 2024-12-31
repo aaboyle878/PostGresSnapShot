@@ -130,28 +130,23 @@ pipeline {
                         curl --header "X-aws-ec2-metadata-token: ${metadata_token}" http://169.254.169.254/latest/meta-data/block-device-mapping/
                     """, returnStdout: true).trim()
 
-                    // Initialize selected device
-                    def selected_device = ""
+                    // List all block devices with lsblk
+                    def lsblk_output = sh(script: "lsblk -o NAME,TYPE -J", returnStdout: true).trim()
 
-                    // Iterate over block devices to find NVMe devices, excluding 'nvme0n1' and 'nvme1n1'
-                    def devices = block_devices.split("\n")
-                    devices.each { device ->
-                        // Use lsblk to list all devices and filter for NVMe disk type
-                        def nvme_device = sh(script: "lsblk -o NAME,TYPE -J | jq -r '.blockdevices[] | select(.name | startswith(\"nvme\")) | .name'", returnStdout: true).trim()
+                    // Parse lsblk output to find NVMe devices, excluding nvme0n1 and nvme1n1
+                    def nvme_devices = sh(script: """
+                        echo '${lsblk_output}' | jq -r '.blockdevices[] | select(.name | startswith("nvme") and .name != "nvme0n1" and .name != "nvme1n1") | .name'
+                    """, returnStdout: true).trim().split("\n")
 
-                        // Exclude nvme0n1 and nvme1n1
-                        if (nvme_device != "nvme0n1" && nvme_device != "nvme1n1" && nvme_device != "") {
-                            selected_device = "/dev/${nvme_device}"
-                            return // Exit the loop once the device is found
-                        }
+                    // Check if we found any valid NVMe devices
+                    if (nvme_devices.isEmpty()) {
+                        error "No valid NVMe devices found (excluding nvme0n1 and nvme1n1)."
                     }
 
-                    // If no device is selected, fail the pipeline
-                    if (selected_device == "") {
-                        error "No valid NVMe device found (excluding nvme0n1 and nvme1n1)."
-                    }
+                    // Use the first available NVMe device (this can be customized based on requirements)
+                    def selected_device = "/dev/${nvme_devices[0]}"
 
-                    // Set the device name in the environment variable
+                    // Set the device name for later stages
                     env.DEVICE_NAME = selected_device
                     echo "Selected device for mounting: ${env.DEVICE_NAME}"
                 }
