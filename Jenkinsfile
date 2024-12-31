@@ -132,7 +132,7 @@ pipeline {
 
                     // List all block devices with lsblk
                     def remote_device_info = sh(script: """
-                        ssh user@remote_host 'lsblk -o NAME,TYPE -J'
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} 'lsblk -o NAME,TYPE -J'
                     """, returnStdout: true).trim()
 
                     // Parse lsblk output to find NVMe devices, excluding nvme0n1 and nvme1n1
