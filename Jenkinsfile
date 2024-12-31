@@ -117,6 +117,41 @@ pipeline {
                 }
             }
         }
+        stage('Determine EBS Device Name') {
+            steps {
+                script {
+                    // Fetch metadata token
+                    def metadata_token = sh(script: '''
+                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" http://169.254.169.254/latest/api/token
+                    ''', returnStdout: true).trim()
+
+                    // Fetch block device mappings
+                    def block_devices = sh(script: """
+                        curl --header "X-aws-ec2-metadata-token: ${metadata_token}" http://169.254.169.254/latest/meta-data/block-device-mapping/
+                    """, returnStdout: true).trim()
+
+                    // Iterate over block devices to find NVMe devices, excluding 'nvme0n1' and 'nvme1n1'
+                    def selected_device = ""
+                    def devices = block_devices.split("\n")
+                    devices.each { device ->
+                        def nvme_device = sh(script: "lsblk -o NAME,TYPE -J | jq -r '.blockdevices[] | select(.name == \"$device\" and .type == \"disk\") | .name'", returnStdout: true).trim()
+
+                        if (nvme_device != "nvme0n1" && nvme_device != "nvme1n1" && nvme_device != "") {
+                            selected_device = "/dev/${nvme_device}"
+                            return // Exit the loop once the device is found
+                        }
+                    }
+
+                    if (selected_device == "") {
+                        error "No valid NVMe device found (excluding nvme0n1 and nvme1n1)."
+                    }
+
+                    // Set the device name in the environment variable
+                    env.DEVICE_NAME = selected_device
+                    echo "Selected device for mounting: ${env.DEVICE_NAME}"
+                }
+            }
+        }
         stage('Mount EBS Volume') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
