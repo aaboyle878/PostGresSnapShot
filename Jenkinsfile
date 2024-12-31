@@ -44,6 +44,11 @@ pipeline {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     script {
+                        // Install jq if it's not already installed
+                        sh """
+                        sudo apt-get update -y
+                        sudo apt-get install -y jq
+                        """
                         // Fetch the IMDSv2 session token
                         def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 36000' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
                         env.AWS_METADATA_TOKEN = token
@@ -56,6 +61,11 @@ pipeline {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     script {
+                        // Install jq if it's not already installed
+                        sh """
+                        sudo apt-get update -y
+                        sudo apt-get install -y jq
+                        """
                         // Fetch IAM role credentials using metadata token
                         def creds = sh(script: """
                             curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/
