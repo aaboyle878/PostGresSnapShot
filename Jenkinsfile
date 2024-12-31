@@ -277,8 +277,8 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                            "psql -d cexplorer -c "SELECT pg_drop_replication_slot(\\"backup_slot\\");" && echo "Replication slot removed successfully.""
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        "psql -d cexplorer -c 'SELECT pg_drop_replication_slot(\'backup_slot\');' && echo 'Replication slot removed successfully.'"
                         """
                     }
                 }
