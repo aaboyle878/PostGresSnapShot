@@ -130,18 +130,23 @@ pipeline {
                         curl --header "X-aws-ec2-metadata-token: ${metadata_token}" http://169.254.169.254/latest/meta-data/block-device-mapping/
                     """, returnStdout: true).trim()
 
-                    // Iterate over block devices to find NVMe devices, excluding 'nvme0n1' and 'nvme1n1'
+                    // Initialize selected device
                     def selected_device = ""
+
+                    // Iterate over block devices to find NVMe devices, excluding 'nvme0n1' and 'nvme1n1'
                     def devices = block_devices.split("\n")
                     devices.each { device ->
-                        def nvme_device = sh(script: "lsblk -o NAME,TYPE -J | jq -r '.blockdevices[] | select(.name == \"$device\" and .type == \"disk\") | .name'", returnStdout: true).trim()
+                        // Use lsblk to list all devices and filter for NVMe disk type
+                        def nvme_device = sh(script: "lsblk -o NAME,TYPE -J | jq -r '.blockdevices[] | select(.name | startswith(\"nvme\")) | .name'", returnStdout: true).trim()
 
+                        // Exclude nvme0n1 and nvme1n1
                         if (nvme_device != "nvme0n1" && nvme_device != "nvme1n1" && nvme_device != "") {
                             selected_device = "/dev/${nvme_device}"
                             return // Exit the loop once the device is found
                         }
                     }
 
+                    // If no device is selected, fail the pipeline
                     if (selected_device == "") {
                         error "No valid NVMe device found (excluding nvme0n1 and nvme1n1)."
                     }
