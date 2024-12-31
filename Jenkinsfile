@@ -21,7 +21,7 @@ pipeline {
                     string(credentialsId: 'INSTANCE_ID', variable: 'INSTANCE_ID'),
                     string(credentialsId: 'NETWORK', variable: 'NETWORK'),
                     string(credentialsId: 'SLACK', variable: 'SLACK'),
-                    string(credentialsId: 'IAM_ROLE' variable 'IAM_ROLE')
+                    string(credentialsId: 'IAM_ROLE', variable 'IAM_ROLE')
                 ]) {
                     script {
                         // Set environment variables so they are available throughout the pipeline
