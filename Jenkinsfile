@@ -86,8 +86,9 @@ pipeline {
                         def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
                         env.AWS_METADATA_TOKEN = token
 
-                        // Confirm metadata token is set
+                        // Confirm metadata token and region are set
                         echo "Metadata token: ${env.AWS_METADATA_TOKEN}"
+                        echo "AWS Region: ${AWS_REGION}"  // Ensure region is correct
 
                         // Create volume using the metadata token
                         def volumeId = sh(script: """
