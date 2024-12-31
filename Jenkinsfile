@@ -162,7 +162,7 @@ pipeline {
                     }
 
                     // Use DEVICE_NAME outside of withEnv to ensure it's passed to the next stage
-                    echo "DEVICE_NAME in next scope: ${env.DEVICE_NAME}"
+                    echo "DEVICE_NAME in next scope: ${DEVICE_NAME}"
                 }
             }
         }
