@@ -80,9 +80,9 @@ pipeline {
                         """, returnStdout: true).trim()
 
                         // Extract AWS credentials
-                        def accessKeyId = sh(script: "echo ${creds} | jq -r .AccessKeyId", returnStdout: true).trim()
-                        def secretAccessKey = sh(script: "echo ${creds} | jq -r .SecretAccessKey", returnStdout: true).trim()
-                        def sessionToken = sh(script: "echo ${creds} | jq -r .Token", returnStdout: true).trim()
+                        def accessKeyId = sh(script: "echo '${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
+                        def secretAccessKey = sh(script: "echo '${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
+                        def sessionToken = sh(script: "echo '${creds}' | jq -r .Token", returnStdout: true).trim()
 
                         // Set the AWS credentials for the session
                         env.AWS_ACCESS_KEY_ID = accessKeyId
