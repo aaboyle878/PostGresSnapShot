@@ -137,6 +137,7 @@ pipeline {
                             """, returnStdout: true).trim()
                         }
                     }
+                }
 
                     // Debug the output
                     echo "Full Output: ${remote_device_info}"
@@ -158,7 +159,6 @@ pipeline {
                     // Set the device name for later stages globally
                     env.DEVICE_NAME = selected_device
                     echo "Selected device for mounting: ${env.DEVICE_NAME}"
-                }
             }
         }
         stage('Mount EBS Volume') {
