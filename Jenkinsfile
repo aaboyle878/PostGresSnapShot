@@ -147,6 +147,8 @@ pipeline {
 
                     echo "Filtered nvme devices: ${nvme_devices}"
 
+                    echo "Current environment: ${env}"
+
                     if (nvme_devices.isEmpty()) {
                         echo "No valid NVMe devices found (excluding nvme0n1 and nvme1n1)."
                         error "No valid NVMe devices found (excluding nvme0n1 and nvme1n1)."
@@ -164,6 +166,8 @@ pipeline {
                         error "env.DEVICE_NAME assignment failed."
                     }
                     echo "Final selected device for mounting: ${env.DEVICE_NAME}"
+                    
+                    echo "Current environment: ${env}"
                 }
             }
         }
