@@ -137,7 +137,8 @@ pipeline {
                             """, returnStdout: true).trim()
                         }
                     }
-                    // Debug the output first
+
+                    // Debug the output
                     echo "Full Output: ${remote_device_info}"
 
                     def nvme_devices = sh(script: """
@@ -145,6 +146,7 @@ pipeline {
                     """, returnStdout: true).trim().split("\n")
 
                     echo "Filtered nvme devices: ${nvme_devices}"
+
                     // Check if we found any valid NVMe devices
                     if (nvme_devices.isEmpty()) {
                         error "No valid NVMe devices found (excluding nvme0n1 and nvme1n1)."
@@ -153,7 +155,7 @@ pipeline {
                     // Use the first available NVMe device (this can be customized based on requirements)
                     def selected_device = "/dev/${nvme_devices[0]}"
 
-                    // Set the device name for later stages
+                    // Set the device name for later stages globally
                     env.DEVICE_NAME = selected_device
                     echo "Selected device for mounting: ${env.DEVICE_NAME}"
                 }
@@ -165,8 +167,8 @@ pipeline {
                     retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "sudo mkfs -t xfs ${DEVICE_NAME} &&
-                        sudo mount ${DEVICE_NAME} ${MOUNT_POINT} &&
+                        "sudo mkfs -t xfs ${env.DEVICE_NAME} &&
+                        sudo mount ${env.DEVICE_NAME} ${MOUNT_POINT} &&
                         sudo chown -R ubuntu:ubuntu ${MOUNT_POINT} &&
                         sudo chmod -R 755 ${MOUNT_POINT} &&
                         echo 'EBS Successfully Mounted and permissions have been set.'"
