@@ -183,6 +183,20 @@ pipeline {
         }
     }
     post {
+        success {
+            slackSend(
+                channel: '#jenkins-notifications',
+                color: 'good',
+                message: "Build Success: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)"
+            )
+        }
+        failure {
+            slackSend(
+                channel: '#jenkins-notifications',
+                color: 'danger',
+                message: "Build Failed: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)"
+            )
+        }
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
                 sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${MOUNT_POINT}'"
@@ -192,6 +206,11 @@ pipeline {
                 """
                 echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
             }
+            slackSend(
+                channel: '#jenkins-notifications',
+                color: 'warning',
+                message: "Build Completed: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)"
+            )
         }
     }
 }
