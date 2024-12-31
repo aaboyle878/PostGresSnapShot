@@ -158,7 +158,6 @@ pipeline {
                 }
             }
         }
-
         stage('Verify Device Name') {
             steps {
                 script {
