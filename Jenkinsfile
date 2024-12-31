@@ -34,22 +34,8 @@ pipeline {
 
                         // Print masked values for debugging (optional)
                         echo "AWS Region: ${AWS_REGION} (retrieved from secret)"
-                        echo "AWS Region: ${EC2_REGION} (retrieved from secret)"
-                        echo "S3 Bucket: ${S3_BUCKET} (retrieved from secret)"
                         echo "EC2 Host: ${EC2_HOST} (retrieved from secret)"
                         echo "Instance ID: ${INSTANCE_ID} (retrieved from secret)"
-                        echo "AWS Region: ${NETWORK} (retrieved from secret)"
-                    }
-                }
-            }
-        }
-        stage('SSH to EC2 Instance') {
-            steps {
-                sshagent(credentials: ['SSH_KEY_CRED']) {
-                    retry(2) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} "echo 'Connected to EC2 instance.'"
-                        """
                     }
                 }
             }
@@ -66,33 +52,33 @@ pipeline {
                 }
             }
         }
-        stage('Prepare Mount Directory') {
-            steps {
-                sshagent(credentials: ['SSH_KEY_CRED']) {
-                    retry(2) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "mkdir -p ${MOUNT_POINT} && echo 'Backup directory created or already exists.'"
-                        """
-                    }
-                }
-            }
-        }
         stage('Provision EBS Volume') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     script {
-                        // Get the metadata token for IMDSv2
-                        def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
-                        env.AWS_METADATA_TOKEN = token
+                        // Fetch IAM role credentials using metadata token
+                        def creds = sh(script: """
+                            curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/
+                        """, returnStdout: true).trim()
 
-                        // Confirm metadata token and region are set
-                        echo "Metadata token: ${env.AWS_METADATA_TOKEN}"
-                        echo "AWS Region: ${AWS_REGION}"  // Ensure region is correct
+                        // Extract AWS credentials
+                        def accessKeyId = sh(script: "echo ${creds} | jq -r .AccessKeyId", returnStdout: true).trim()
+                        def secretAccessKey = sh(script: "echo ${creds} | jq -r .SecretAccessKey", returnStdout: true).trim()
+                        def sessionToken = sh(script: "echo ${creds} | jq -r .Token", returnStdout: true).trim()
 
-                        // Create volume using the metadata token
+                        // Set the AWS credentials for the session
+                        env.AWS_ACCESS_KEY_ID = accessKeyId
+                        env.AWS_SECRET_ACCESS_KEY = secretAccessKey
+                        env.AWS_SESSION_TOKEN = sessionToken
+
+                        // Confirm AWS credentials and region are set
+                        echo "AWS Access Key ID: ${env.AWS_ACCESS_KEY_ID}"
+                        echo "AWS Secret Access Key: ${env.AWS_SECRET_ACCESS_KEY}"
+                        echo "AWS Session Token: ${env.AWS_SESSION_TOKEN}"
+                        echo "AWS Region: ${AWS_REGION}"
+
+                        // Create EBS volume
                         def volumeId = sh(script: """
-                            export AWS_METADATA_TOKEN=${AWS_METADATA_TOKEN}
                             aws ec2 create-volume --size ${params.VOLUME_SIZE} --volume-type gp2 --availability-zone eu-west-1b --region ${AWS_REGION} --query 'VolumeId' --output text
                         """, returnStdout: true).trim()
 
@@ -100,7 +86,6 @@ pipeline {
 
                         // Attach volume
                         sh """
-                            export AWS_METADATA_TOKEN=${AWS_METADATA_TOKEN}
                             aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${params.INSTANCE_ID} --device ${DEVICE_NAME} --region ${AWS_REGION}
                         """
                         echo "Attached EBS Volume: ${volumeId} to instance: ${params.INSTANCE_ID}"
@@ -220,8 +205,8 @@ pipeline {
             }
         }
     }
-    post {
-         success {
+     post {
+        success {
             script {
                 def message = [
                     channel: "${SLACK_CHANNEL}",
@@ -258,34 +243,14 @@ pipeline {
             }
         }
         always {
-            sshagent(credentials: ['SSH_KEY_CRED']) {
-                script{
-                    def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
-                            env.AWS_METADATA_TOKEN = token
-                    sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${MOUNT_POINT}'"
-                    sh """
-                        export AWS_METADATA_TOKEN=${AWS_METADATA_TOKEN}
-                        aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${AWS_METADATA_TOKEN}
-                        aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${AWS_METADATA_TOKEN}
-                    """
-                    echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
-                }
-            }
             script {
-                def message = [
-                    channel: "${SLACK_CHANNEL}",
-                    text: "Build Completed: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)",
-                    color: 'warning',
-                    icon_emoji: ':warning:',  // Emoji for failure
-                    username: 'Jenkins'  // Custom bot name
-                ]
-                // Send message to Slack
-                httpRequest(
-                    url: "${SLACK}",
-                    httpMode: 'POST',
-                    contentType: 'APPLICATION_JSON',
-                    requestBody: groovy.json.JsonOutput.toJson(message)
-                )
+                // Clean up
+                sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${MOUNT_POINT}'"
+                sh """
+                    aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${env.AWS_METADATA_TOKEN}
+                    aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${env.AWS_METADATA_TOKEN}
+                """
+                echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
             }
         }
     }
