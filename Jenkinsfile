@@ -328,8 +328,8 @@ pipeline {
                     // Clean up
                     sh """
                     ssh ubuntu@${EC2_HOST} \\
-                    aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${env.AWS_METADATA_TOKEN}
-                    aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${env.AWS_METADATA_TOKEN}
+                    aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} 
+                    aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} 
                     """
                     echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
                 }
