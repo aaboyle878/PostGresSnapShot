@@ -49,12 +49,14 @@ pipeline {
                         // Fetch the IMDSv2 session token
                         def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 36000' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
                                // Ensure the token is set
-                    if (token) {
+                        if (token) {
                         echo "Session Token: ${token}"
                         env.AWS_METADATA_TOKEN = token
-                    } else {
+                        } else {
                         error "Failed to retrieve session token."
+                        }
                     }
+                
                 }
             }
         }
