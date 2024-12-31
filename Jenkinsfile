@@ -8,6 +8,7 @@ pipeline {
         TAR_FILE = "/tmp/postgres_backup/postgres_backup.tar.gz"
         MOUNT_POINT = "/tmp/postgres_backup"
         DEVICE_NAME = "/dev/nvme2n1"
+        SLACK_CHANNEL = '#jenkins-notifications' 
     }
     stages {
          stage('Retrieve Secrets') {
@@ -18,7 +19,8 @@ pipeline {
                     string(credentialsId: 'S3_BUCKET', variable: 'S3_BUCKET'),
                     string(credentialsId: 'EC2_HOST', variable: 'EC2_HOST'),
                     string(credentialsId: 'INSTANCE_ID', variable: 'INSTANCE_ID'),
-                    string(credentialsId: 'NETWORK', variable: 'NETWORK')
+                    string(credentialsId: 'NETWORK', variable: 'NETWORK'),
+                    string(credentialsId: 'SLACK', variable: 'SLACK')
                 ]) {
                     script {
                         // Set environment variables so they are available throughout the pipeline
@@ -28,7 +30,8 @@ pipeline {
                         env.EC2_HOST = "${EC2_HOST}"
                         env.INSTANCE_ID = "${INSTANCE_ID}"
                         env.NETWORK = "${NETWORK}"
-                        
+                        env.SLACK = "${SLACK}"
+
                         // Print masked values for debugging (optional)
                         echo "AWS Region: ${AWS_REGION} (retrieved from secret)"
                         echo "AWS Region: ${EC2_REGION} (retrieved from secret)"
@@ -191,19 +194,41 @@ pipeline {
         }
     }
     post {
-        success {
-            slackSend(
-                channel: '#jenkins-notifications',
-                color: 'good',
-                message: "Build Success: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)"
-            )
+         success {
+            script {
+                def message = [
+                    channel: "${SLACK_CHANNEL}",
+                    text: "Build Success: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)",
+                    color: 'good',
+                    icon_emoji: ':tada:',  // Emoji for success
+                    username: 'Jenkins'  // Custom bot name
+                ]
+                // Send message to Slack
+                httpRequest(
+                    url: "${SLACK}",
+                    httpMode: 'POST',
+                    contentType: 'APPLICATION_JSON',
+                    requestBody: groovy.json.JsonOutput.toJson(message)
+                )
+            }
         }
         failure {
-            slackSend(
-                channel: '#jenkins-notifications',
-                color: 'danger',
-                message: "Build Failed: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)"
-            )
+            script {
+                def message = [
+                    channel: "${SLACK_CHANNEL}",
+                    text: "Build Failed: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)",
+                    color: 'danger',
+                    icon_emoji: ':warning:',  // Emoji for failure
+                    username: 'Jenkins'  // Custom bot name
+                ]
+                // Send message to Slack
+                httpRequest(
+                    url: "${SLACK}",
+                    httpMode: 'POST',
+                    contentType: 'APPLICATION_JSON',
+                    requestBody: groovy.json.JsonOutput.toJson(message)
+                )
+            }
         }
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
@@ -214,12 +239,22 @@ pipeline {
                 """
                 echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
             }
-            slackSend(
-                channel: '#jenkins-notifications',
-                color: 'warning',
-                message: "Build Completed: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)",
-                tokenCredentialId: 'SLACK'
-            )
+            script {
+                def message = [
+                    channel: "${SLACK_CHANNEL}",
+                    text: "Build Completed: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)",
+                    color: 'warning',
+                    icon_emoji: ':warning:',  // Emoji for failure
+                    username: 'Jenkins'  // Custom bot name
+                ]
+                // Send message to Slack
+                httpRequest(
+                    url: "${SLACK}",
+                    httpMode: 'POST',
+                    contentType: 'APPLICATION_JSON',
+                    requestBody: groovy.json.JsonOutput.toJson(message)
+                )
+            }
         }
     }
 }
