@@ -135,7 +135,7 @@ pipeline {
 
                     // Parse lsblk output to find NVMe devices, excluding nvme0n1 and nvme1n1
                     def nvme_devices = sh(script: """
-                        echo '${lsblk_output}' | jq -r '.blockdevices[] | select(.name | startswith("nvme") and .name != "nvme0n1" and .name != "nvme1n1") | .name'
+                        echo '${lsblk_output}' | jq -r '.blockdevices[] | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
                     """, returnStdout: true).trim().split("\n")
 
                     // Check if we found any valid NVMe devices
