@@ -106,9 +106,9 @@ pipeline {
 
                             // Attach volume
                             sh """
-                                aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${params.INSTANCE_ID} --device ${DEVICE_NAME} --region ${AWS_REGION}
+                                aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${INSTANCE_ID} --device ${DEVICE_NAME} --region ${AWS_REGION}
                             """
-                            echo "Attached EBS Volume: ${volumeId} to instance: ${params.INSTANCE_ID}"
+                            echo "Attached EBS Volume: ${volumeId} to instance: ${INSTANCE_ID}"
 
                             env.VOLUME_ID = volumeId
                         }
