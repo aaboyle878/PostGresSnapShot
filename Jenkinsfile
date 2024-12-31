@@ -71,29 +71,6 @@ pipeline {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     script {
-                        def checkAndRenewToken = {
-                            def currentTime = System.currentTimeMillis()
-                            def tokenCreationTime = env.TOKEN_CREATION_TIME.toLong()
-
-                            if ((currentTime - tokenCreationTime) / 1000 >= env.TOKEN_TTL_SECONDS - 300) {
-                                echo "Token nearing expiration. Renewing..."
-                                def newToken = sh(script: '''
-                                    curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: ${TOKEN_TTL_SECONDS}" http://169.254.169.254/latest/api/token
-                                ''', returnStdout: true).trim()
-
-                                if (!newToken) {
-                                    error "Failed to renew session token."
-                                }
-
-                                echo "Token successfully renewed."
-                                env.AWS_METADATA_TOKEN = newToken
-                                env.TOKEN_CREATION_TIME = System.currentTimeMillis().toString()
-                            }
-                        }
-
-                        // Check and renew token before provisioning volume
-                        checkAndRenewToken()
-
                         def creds = sh(script: """
                             curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${IAM_ROLE}
                         """, returnStdout: true).trim()
