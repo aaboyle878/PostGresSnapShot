@@ -46,11 +46,11 @@ pipeline {
             steps {
                 script {
                     def token = sh(script: '''
-                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" http://169.254.169.254/latest/api/token
+                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 36000" http://169.254.169.254/latest/api/token
                     ''', returnStdout: true).trim()
 
                     if (token) {
-                        echo "Session Token: ${token}"
+                        echo "Token retrieved successfully"
                         env.AWS_METADATA_TOKEN = token
 
                         def roleName = sh(script: """
@@ -63,7 +63,7 @@ pipeline {
                             curl -H "X-aws-ec2-metadata-token: ${token}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${roleName}
                         """, returnStdout: true).trim()
 
-                        echo "IAM Credentials: ${credentials}"
+                        echo "IAM Credentials retrieved successfully"
                     } else {
                         error "Failed to retrieve session token."
                     }
