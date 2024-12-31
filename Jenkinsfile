@@ -54,6 +54,18 @@ pipeline {
                 }
             }
         }
+        stage('Retrieve AWS Session Token') {
+            steps {
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    script {
+                        // Fetch the IMDSv2 session token
+                        def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 36000' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
+                        env.AWS_METADATA_TOKEN = token
+                        echo "Session Token retrieved successfully"
+                    }
+                }
+            }
+        }
         stage('Prepare Mount Directory') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
