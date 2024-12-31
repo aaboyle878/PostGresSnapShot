@@ -8,7 +8,7 @@ pipeline {
         TAR_FILE = "/tmp/postgres_backup/postgres_backup.tar.gz"
         MOUNT_POINT = "/tmp/postgres_backup"
         DEVICE_NAME = "/dev/nvme2n1"
-        VOLUME_NAME = "dev/sda2"
+        VOLUME_NAME = "/dev/sda2"
         SLACK_CHANNEL = '#jenkins-notifications' 
         TOKEN_CREATION_TIME = ''
         TOKEN_TTL_SECONDS = 3600
