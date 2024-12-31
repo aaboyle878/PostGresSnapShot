@@ -21,6 +21,14 @@ pipeline {
                     string(credentialsId: 'NETWORK', variable: 'NETWORK')
                 ]) {
                     script {
+                        // Set environment variables so they are available throughout the pipeline
+                        env.AWS_REGION = "${AWS_REGION}"
+                        env.EC2_REGION = "${EC2_REGION}"
+                        env.S3_BUCKET = "${S3_BUCKET}"
+                        env.EC2_HOST = "${EC2_HOST}"
+                        env.INSTANCE_ID = "${INSTANCE_ID}"
+                        env.NETWORK = "${NETWORK}"
+                        
                         // Print masked values for debugging (optional)
                         echo "AWS Region: ${AWS_REGION} (retrieved from secret)"
                         echo "AWS Region: ${EC2_REGION} (retrieved from secret)"
