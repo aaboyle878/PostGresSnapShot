@@ -20,7 +20,8 @@ pipeline {
                     string(credentialsId: 'EC2_HOST', variable: 'EC2_HOST'),
                     string(credentialsId: 'INSTANCE_ID', variable: 'INSTANCE_ID'),
                     string(credentialsId: 'NETWORK', variable: 'NETWORK'),
-                    string(credentialsId: 'SLACK', variable: 'SLACK')
+                    string(credentialsId: 'SLACK', variable: 'SLACK'),
+                    string(credentialsId: 'IAM_ROLE' variable 'IAM_ROLE')
                 ]) {
                     script {
                         // Set environment variables so they are available throughout the pipeline
@@ -31,6 +32,7 @@ pipeline {
                         env.INSTANCE_ID = "${INSTANCE_ID}"
                         env.NETWORK = "${NETWORK}"
                         env.SLACK = "${SLACK}"
+                        env.IAM_ROLE = "${IAM_ROLE}"
 
                         // Print masked values for debugging (optional)
                         echo "AWS Region: ${AWS_REGION} (retrieved from secret)"
@@ -58,7 +60,7 @@ pipeline {
                     script {
                         // Fetch IAM role credentials using metadata token
                         def creds = sh(script: """
-                            curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/
+                            curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${IAM_ROLE}
                         """, returnStdout: true).trim()
 
                         // Extract AWS credentials
