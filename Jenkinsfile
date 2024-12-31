@@ -46,7 +46,7 @@ pipeline {
             steps {
                 script {
                     def token = sh(script: '''
-                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 36000" http://169.254.169.254/latest/api/token
+                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" http://169.254.169.254/latest/api/token
                     ''', returnStdout: true).trim()
 
                     if (token) {
