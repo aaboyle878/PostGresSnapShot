@@ -82,16 +82,28 @@ pipeline {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     script {
+                        // Get the metadata token for IMDSv2
+                        def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
+                        env.AWS_METADATA_TOKEN = token
+
+                        // Confirm metadata token is set
+                        echo "Metadata token: ${env.AWS_METADATA_TOKEN}"
+
+                        // Create volume using the metadata token
                         def volumeId = sh(script: """
                             export AWS_METADATA_TOKEN=${AWS_METADATA_TOKEN}
                             aws ec2 create-volume --size ${params.VOLUME_SIZE} --volume-type gp2 --availability-zone eu-west-1b --region ${AWS_REGION} --query 'VolumeId' --output text
                         """, returnStdout: true).trim()
+
                         echo "Created EBS Volume: ${volumeId}"
+
+                        // Attach volume
                         sh """
                             export AWS_METADATA_TOKEN=${AWS_METADATA_TOKEN}
                             aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${params.INSTANCE_ID} --device ${DEVICE_NAME} --region ${AWS_REGION}
                         """
                         echo "Attached EBS Volume: ${volumeId} to instance: ${params.INSTANCE_ID}"
+
                         env.VOLUME_ID = volumeId
                     }
                 }
@@ -246,6 +258,8 @@ pipeline {
         }
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
+                def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
+                        env.AWS_METADATA_TOKEN = token
                 sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${MOUNT_POINT}'"
                 sh """
                     export AWS_METADATA_TOKEN=${AWS_METADATA_TOKEN}
