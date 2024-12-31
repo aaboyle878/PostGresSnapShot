@@ -207,6 +207,7 @@ pipeline {
                 echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
             }
             slackSend(
+                credentials: ['SLACK'],
                 channel: '#jenkins-notifications',
                 color: 'warning',
                 message: "Build Completed: ${env.JOB_NAME} [${env.BUILD_NUMBER}] (<${env.BUILD_URL}|Open>)"
