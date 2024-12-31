@@ -7,7 +7,7 @@ pipeline {
         BACKUP_DIR = "/tmp/postgres_backup/snapshot"
         TAR_FILE = "/tmp/postgres_backup/postgres_backup.tar.gz"
         MOUNT_POINT = "/tmp/postgres_backup"
-        DEVICE_NAME = "/dev/nvme2n1"
+        DEVICE_NAME = ""
         VOLUME_NAME = "/dev/sda2"
         SLACK_CHANNEL = '#jenkins-notifications' 
         TOKEN_CREATION_TIME = ''
@@ -131,11 +131,13 @@ pipeline {
                     """, returnStdout: true).trim()
 
                     // List all block devices with lsblk
-                    def lsblk_output = sh(script: "lsblk -o NAME,TYPE -J", returnStdout: true).trim()
+                    def remote_device_info = sh(script: """
+                        ssh user@remote_host 'lsblk -o NAME,TYPE -J'
+                    """, returnStdout: true).trim()
 
                     // Parse lsblk output to find NVMe devices, excluding nvme0n1 and nvme1n1
                     def nvme_devices = sh(script: """
-                        echo '${lsblk_output}' | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
+                        echo '${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
                     """, returnStdout: true).trim().split("\n")
 
 
