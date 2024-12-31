@@ -11,7 +11,6 @@ pipeline {
         SLACK_CHANNEL = '#jenkins-notifications' 
         TOKEN_CREATION_TIME = ''
         TOKEN_TTL_SECONDS = 3600
-        DEVICE_NAME = ''
     }
     stages {
          stage('Retrieve Secrets') {
