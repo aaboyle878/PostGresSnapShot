@@ -142,7 +142,7 @@ pipeline {
                     echo "Full Output: ${remote_device_info}"
 
                     def nvme_devices = sh(script: """
-                        echo '${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme"))'
+                        echo '${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
                     """, returnStdout: true).trim().split("\n")
 
                     echo "Filtered nvme devices: ${nvme_devices}"
