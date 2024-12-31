@@ -11,6 +11,7 @@ pipeline {
         SLACK_CHANNEL = '#jenkins-notifications' 
         TOKEN_CREATION_TIME = ''
         TOKEN_TTL_SECONDS = 3600
+        DEVICE_NAME = ''
     }
     stages {
          stage('Retrieve Secrets') {
@@ -137,9 +138,7 @@ pipeline {
                             """, returnStdout: true).trim()
                         }
                     }
-                }
 
-                    // Debug the output
                     echo "Full Output: ${remote_device_info}"
 
                     def nvme_devices = sh(script: """
@@ -153,12 +152,21 @@ pipeline {
                         error "No valid NVMe devices found (excluding nvme0n1 and nvme1n1)."
                     }
 
-                    // Use the first available NVMe device (this can be customized based on requirements)
-                    def selected_device = "/dev/${nvme_devices[0]}"
-
-                    // Set the device name for later stages globally
-                    env.DEVICE_NAME = selected_device
+                    // Use the first available NVMe device
+                    env.DEVICE_NAME = "/dev/${nvme_devices[0]}"
                     echo "Selected device for mounting: ${env.DEVICE_NAME}"
+                }
+            }
+        }
+
+        stage('Verify Device Name') {
+            steps {
+                script {
+                    echo "DEVICE_NAME in Verify Stage: ${env.DEVICE_NAME}"
+                    if (!env.DEVICE_NAME) {
+                        error "DEVICE_NAME is not set correctly. Exiting..."
+                    }
+                }
             }
         }
         stage('Mount EBS Volume') {
