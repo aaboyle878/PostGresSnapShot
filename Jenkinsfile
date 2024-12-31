@@ -147,21 +147,23 @@ pipeline {
 
                     echo "Filtered nvme devices: ${nvme_devices}"
 
-                    // Check if we found any valid NVMe devices
                     if (nvme_devices.isEmpty()) {
+                        echo "No valid NVMe devices found (excluding nvme0n1 and nvme1n1)."
                         error "No valid NVMe devices found (excluding nvme0n1 and nvme1n1)."
                     }
 
+                    echo "NVMe devices found: ${nvme_devices}"
+
                     // Use the first available NVMe device
-                    // Assign and debug
                     env.DEVICE_NAME = "/dev/${nvme_devices[0]}"
-                    echo "Selected device for mounting (env.DEVICE_NAME): ${env.DEVICE_NAME}"
+                    echo "Device selected for mounting: ${env.DEVICE_NAME}"
 
                     // Reconfirm
                     if (!env.DEVICE_NAME) {
+                        echo "Device name assignment failed."
                         error "env.DEVICE_NAME assignment failed."
                     }
-                    echo "Selected device for mounting: ${env.DEVICE_NAME}"
+                    echo "Final selected device for mounting: ${env.DEVICE_NAME}"
                 }
             }
         }
