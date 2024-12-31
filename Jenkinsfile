@@ -258,15 +258,17 @@ pipeline {
         }
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
-                def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
-                        env.AWS_METADATA_TOKEN = token
-                sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${MOUNT_POINT}'"
-                sh """
-                    export AWS_METADATA_TOKEN=${AWS_METADATA_TOKEN}
-                    aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${AWS_METADATA_TOKEN}
-                    aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${AWS_METADATA_TOKEN}
-                """
-                echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
+                script{
+                    def token = sh(script: "curl -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 21600' http://169.254.169.254/latest/api/token", returnStdout: true).trim()
+                            env.AWS_METADATA_TOKEN = token
+                    sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${MOUNT_POINT}'"
+                    sh """
+                        export AWS_METADATA_TOKEN=${AWS_METADATA_TOKEN}
+                        aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${AWS_METADATA_TOKEN}
+                        aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${AWS_METADATA_TOKEN}
+                    """
+                    echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
+                }
             }
             script {
                 def message = [
