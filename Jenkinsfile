@@ -83,11 +83,12 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     script {
                         def volumeId = sh(script: """
-                            aws ec2 create-volume --size ${params.VOLUME_SIZE} --volume-type gp2 --availability-zone eu-west-1b --region ${AWS_REGION} --query 'VolumeId' --output text
+                            aws ec2 create-volume --size ${params.VOLUME_SIZE} --volume-type gp2 --availability-zone eu-west-1b --region ${AWS_REGION} --query 'VolumeId' --output text \
+                            --metadata-token ${AWS_METADATA_TOKEN}
                         """, returnStdout: true).trim()
                         echo "Created EBS Volume: ${volumeId}"
                         sh """
-                            aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${params.INSTANCE_ID} --device ${DEVICE_NAME} --region ${AWS_REGION}
+                            aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${params.INSTANCE_ID} --device ${DEVICE_NAME} --region ${AWS_REGION} --metadata-token ${AWS_METADATA_TOKEN}
                         """
                         echo "Attached EBS Volume: ${volumeId} to instance: ${params.INSTANCE_ID}"
                         env.VOLUME_ID = volumeId
@@ -246,8 +247,8 @@ pipeline {
             sshagent(credentials: ['SSH_KEY_CRED']) {
                 sh "ssh ubuntu@${EC2_HOST} 'sudo rm -rf ${BACKUP_DIR}/* ${TAR_FILE} && sudo umount ${MOUNT_POINT}'"
                 sh """
-                    aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION}
-                    aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION}
+                    aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${AWS_METADATA_TOKEN}
+                    aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} --metadata-token ${AWS_METADATA_TOKEN}
                 """
                 echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
             }
