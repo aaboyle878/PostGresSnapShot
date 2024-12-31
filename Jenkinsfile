@@ -131,22 +131,21 @@ pipeline {
                     """, returnStdout: true).trim()
 
                     // List all block devices with lsblk
-                    def remote_device_info = 
-                    sshagent(credentials: ['SSH_KEY_CRED']) {
+                    def remote_device_info = sshagent(credentials: ['SSH_KEY_CRED']) {
                         retry(2) {
                             sh(script: """
                                 ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} 'lsblk -o NAME,TYPE -J'
                             """, returnStdout: true).trim()
                         }
                     }
+                    // Debug the output first
+                    echo "Full Output: ${remote_device_info}"
 
-
-                    // Parse lsblk output to find NVMe devices, excluding nvme0n1 and nvme1n1
                     def nvme_devices = sh(script: """
-                        echo '${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
+                        echo '${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme"))'
                     """, returnStdout: true).trim().split("\n")
 
-
+                    echo "Filtered nvme devices: ${nvme_devices}"
                     // Check if we found any valid NVMe devices
                     if (nvme_devices.isEmpty()) {
                         error "No valid NVMe devices found (excluding nvme0n1 and nvme1n1)."
