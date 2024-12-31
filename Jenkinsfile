@@ -44,21 +44,29 @@ pipeline {
         }
         stage('Retrieve AWS Session Token') {
             steps {
-                sshagent(credentials: ['SSH_KEY_CRED']) {
-                    script {
-                        // Fetch the IMDSv2 session token
-                        def token = sh(script: """
-                            curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 36000" http://169.254.169.254/latest/api/token
-                            """, returnStdout: true).trim()
-                               // Ensure the token is set
-                        if (token) {
+                script {
+                    def token = sh(script: '''
+                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" http://169.254.169.254/latest/api/token
+                    ''', returnStdout: true).trim()
+
+                    if (token) {
                         echo "Session Token: ${token}"
                         env.AWS_METADATA_TOKEN = token
-                        } else {
+
+                        def roleName = sh(script: """
+                            curl -H "X-aws-ec2-metadata-token: ${token}" http://169.254.169.254/latest/meta-data/iam/security-credentials/
+                        """, returnStdout: true).trim()
+
+                        echo "Role Name: ${roleName}"
+                        
+                        def credentials = sh(script: """
+                            curl -H "X-aws-ec2-metadata-token: ${token}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${roleName}
+                        """, returnStdout: true).trim()
+
+                        echo "IAM Credentials: ${credentials}"
+                    } else {
                         error "Failed to retrieve session token."
-                        }
                     }
-                
                 }
             }
         }
