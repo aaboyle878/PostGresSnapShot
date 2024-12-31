@@ -50,7 +50,7 @@ pipeline {
                     ''', returnStdout: true).trim()
 
                     if (token) {
-                        echo "Token retrieved successfully"
+                        echo "Session Token: ${token}"
                         env.AWS_METADATA_TOKEN = token
 
                         def roleName = sh(script: """
@@ -63,7 +63,7 @@ pipeline {
                             curl -H "X-aws-ec2-metadata-token: ${token}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${roleName}
                         """, returnStdout: true).trim()
 
-                        echo "IAM Credentials retrieved successfully"
+                        echo "IAM Credentials: ${credentials}"
                     } else {
                         error "Failed to retrieve session token."
                     }
@@ -80,9 +80,9 @@ pipeline {
                         """, returnStdout: true).trim()
 
                         // Extract AWS credentials
-                        def accessKeyId = sh(script: "echo '${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
-                        def secretAccessKey = sh(script: "echo '${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
-                        def sessionToken = sh(script: "echo '${creds}' | jq -r .Token", returnStdout: true).trim()
+                        def accessKeyId = sh(script: "echo ${creds} | jq -r .AccessKeyId", returnStdout: true).trim()
+                        def secretAccessKey = sh(script: "echo ${creds} | jq -r .SecretAccessKey", returnStdout: true).trim()
+                        def sessionToken = sh(script: "echo ${creds} | jq -r .Token", returnStdout: true).trim()
 
                         // Set the AWS credentials for the session
                         env.AWS_ACCESS_KEY_ID = accessKeyId
