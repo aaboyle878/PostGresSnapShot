@@ -78,19 +78,26 @@ pipeline {
                         echo "AWS Region: ${AWS_REGION}"
 
                         // Create EBS volume
-                        def volumeId = sh(script: """
-                            aws ec2 create-volume --size ${params.VOLUME_SIZE} --volume-type gp2 --availability-zone eu-west-1b --region ${AWS_REGION} --query 'VolumeId' --output text
-                        """, returnStdout: true).trim()
+                        withEnv([
+                            "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
+                            "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
+                            "AWS_SESSION_TOKEN=${env.AWS_SESSION_TOKEN}",
+                            "AWS_REGION=${AWS_REGION}"
+                        ]) {
+                            def volumeId = sh(script: """
+                                aws ec2 create-volume --size ${params.VOLUME_SIZE} --volume-type gp2 --availability-zone eu-west-1b --region ${AWS_REGION} --query 'VolumeId' --output text
+                            """, returnStdout: true).trim()
 
-                        echo "Created EBS Volume: ${volumeId}"
+                            echo "Created EBS Volume: ${volumeId}"
 
-                        // Attach volume
-                        sh """
-                            aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${params.INSTANCE_ID} --device ${DEVICE_NAME} --region ${AWS_REGION}
-                        """
-                        echo "Attached EBS Volume: ${volumeId} to instance: ${params.INSTANCE_ID}"
+                            // Attach volume
+                            sh """
+                                aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${params.INSTANCE_ID} --device ${DEVICE_NAME} --region ${AWS_REGION}
+                            """
+                            echo "Attached EBS Volume: ${volumeId} to instance: ${params.INSTANCE_ID}"
 
-                        env.VOLUME_ID = volumeId
+                            env.VOLUME_ID = volumeId
+                        }
                     }
                 }
             }
