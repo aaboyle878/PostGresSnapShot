@@ -278,9 +278,15 @@ pipeline {
                     retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
-                        for slot in \$(psql -d cexplorer -t -c "SELECT slot_name FROM pg_replication_slots WHERE slot_name NOT LIKE ''pg_%%'' AND slot_name IS NOT NULL;"); do
+                        # Fetch and print replication slots
+                        echo "Fetching replication slots..."
+                        slots=\$(psql -d cexplorer -t -c "SELECT slot_name FROM pg_replication_slots WHERE slot_name NOT LIKE ''pg_%%'' AND slot_name IS NOT NULL;")
+                        echo "Replication Slots: \$slots"
+
+                        # Loop through and drop each slot
+                        for slot in \$slots; do
                             echo "Dropping replication slot: \$slot"
-                            psql -d cexplorer -c "SELECT pg_drop_replication_slot(''\$slot'');"
+                            psql -d cexplorer -c "SELECT pg_drop_replication_slot('\$slot');"
                         done
                         '
                         """
@@ -288,6 +294,7 @@ pipeline {
                 }
             }
         }
+
     }
      post {
         success {
