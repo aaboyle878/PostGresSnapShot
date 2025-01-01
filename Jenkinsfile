@@ -277,7 +277,7 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} 'bash -c "psql -d cexplorer -c \"DO \$\$ DECLARE slot RECORD; BEGIN FOR slot IN SELECT slot_name FROM pg_replication_slots LOOP EXECUTE ''SELECT pg_drop_replication_slot('''' || slot.slot_name || ''''');''; END LOOP; END \$\$;"'
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} "psql -d cexplorer -c \"DO \$\$ DECLARE slot RECORD; BEGIN FOR slot IN SELECT slot_name FROM pg_replication_slots LOOP EXECUTE ''SELECT pg_drop_replication_slot('''' || slot.slot_name || ''''');''; END LOOP; END \$\$;"
                         "
                         """
                     }
