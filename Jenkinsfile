@@ -279,7 +279,7 @@ pipeline {
                         sh """
                         sleep 5
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "source .bashrc; psql -d cexplorer -c 'SELECT pg_drop_replication_slot(\"backup_slot\");' && echo 'Replication slot removed successfully.'"
+                        "set -x; source .bashrc; psql -d cexplorer -c 'SELECT pg_drop_replication_slot(\"backup_slot\");' && echo 'Replication slot removed successfully.'"
                         """
                     }
                 }
