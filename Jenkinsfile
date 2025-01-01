@@ -266,8 +266,8 @@ pipeline {
                     retry(5) {
                         sh """
                         sleep 5
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        psql -d cexplorer -c 'SELECT pg_drop_replication_slot(\"backup_slot\");' && echo 'Replication slot removed successfully.'
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \
+                        "psql -d cexplorer -c \\\"SELECT pg_drop_replication_slot('backup_slot');\\\" && echo 'Replication slot removed successfully.'"
                         """
                     }
                 }
