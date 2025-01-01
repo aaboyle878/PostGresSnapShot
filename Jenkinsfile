@@ -128,7 +128,7 @@ pipeline {
                     }
 
                     def nvme_devices = sh(script: """
-                        '${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
+                        'echo ${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
                     """, returnStdout: true).trim().split("\n")
 
                     // Assign the first device to DEVICE_NAME
