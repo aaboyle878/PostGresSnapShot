@@ -85,12 +85,6 @@ pipeline {
                         env.AWS_SECRET_ACCESS_KEY = secretAccessKey
                         env.AWS_SESSION_TOKEN = sessionToken
 
-                        // Confirm AWS credentials and region are set
-                        echo "AWS Access Key ID: ${env.AWS_ACCESS_KEY_ID}"
-                        echo "AWS Secret Access Key: ${env.AWS_SECRET_ACCESS_KEY}"
-                        echo "AWS Session Token: ${env.AWS_SESSION_TOKEN}"
-                        echo "AWS Region: ${AWS_REGION}"
-
                         // Create EBS volume
                         withEnv([
                             "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
@@ -138,15 +132,9 @@ pipeline {
                         }
                     }
 
-                    echo "Full Output: ${remote_device_info}"
-
                     def nvme_devices = sh(script: """
                         echo '${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
                     """, returnStdout: true).trim().split("\n")
-
-                    echo "Filtered nvme devices: ${nvme_devices}"
-
-                    echo "Current environment: ${env}"
 
                     // Assign the first device to DEVICE_NAME
                     def selectedDevice = "/dev/${nvme_devices[0]}"
@@ -279,7 +267,7 @@ pipeline {
                         sh """
                         sleep 5
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        set -x; source .bashrc; psql -d cexplorer -c 'SELECT pg_drop_replication_slot(\"backup_slot\");' && echo 'Replication slot removed successfully.'
+                        psql -d cexplorer -c 'SELECT pg_drop_replication_slot(\"backup_slot\");' && echo 'Replication slot removed successfully.'
                         """
                     }
                 }
