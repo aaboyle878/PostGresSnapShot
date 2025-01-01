@@ -294,7 +294,6 @@ pipeline {
                 }
             }
         }
-
     }
      post {
         success {
