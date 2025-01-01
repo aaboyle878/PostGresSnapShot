@@ -280,7 +280,7 @@ pipeline {
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
                         for slot in \$(psql -d cexplorer -t -c "SELECT slot_name FROM pg_replication_slots WHERE slot_name NOT LIKE ''pg_%%'' AND slot_name IS NOT NULL;"); do
                             echo "Dropping replication slot: \$slot"
-                            psql -d cexplorer -c "SELECT pg_drop_replication_slot('\$slot');"
+                            psql -d cexplorer -c "SELECT pg_drop_replication_slot(''\$slot'');"
                         done
                         '
                         """
