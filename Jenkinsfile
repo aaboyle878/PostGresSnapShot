@@ -222,6 +222,16 @@ pipeline {
                 }
             }
         }
+        stage('Refresh Token'){
+            steps {
+                script {
+                    // Fetch metadata token
+                    def metadata_token = sh(script: '''
+                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" http://169.254.169.254/latest/api/token
+                    ''', returnStdout: true).trim()
+                }
+            }
+        }
         stage('Upload Backup to S3') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
