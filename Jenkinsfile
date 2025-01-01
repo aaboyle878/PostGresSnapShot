@@ -35,11 +35,6 @@ pipeline {
                         env.NETWORK = "${NETWORK}"
                         env.SLACK = "${SLACK}"
                         env.IAM_ROLE = "${IAM_ROLE}"
-
-                        // Print masked values for debugging (optional)
-                        echo "AWS Region: ${AWS_REGION} (retrieved from secret)"
-                        echo "EC2 Host: ${EC2_HOST} (retrieved from secret)"
-                        echo "Instance ID: ${INSTANCE_ID} (retrieved from secret)"
                     }
                 }
             }
@@ -76,9 +71,9 @@ pipeline {
                         """, returnStdout: true).trim()
 
                         // Extract AWS credentials
-                        def accessKeyId = sh(script: "echo '${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
-                        def secretAccessKey = sh(script: "echo '${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
-                        def sessionToken = sh(script: "echo '${creds}' | jq -r .Token", returnStdout: true).trim()
+                        def accessKeyId = sh(script: "'${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
+                        def secretAccessKey = sh(script: "'${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
+                        def sessionToken = sh(script: "'${creds}' | jq -r .Token", returnStdout: true).trim()
 
                         // Set the AWS credentials for the session
                         env.AWS_ACCESS_KEY_ID = accessKeyId
@@ -133,7 +128,7 @@ pipeline {
                     }
 
                     def nvme_devices = sh(script: """
-                        echo '${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
+                        '${remote_device_info}' | jq -r '.blockdevices[] | select(.name | test("^nvme")) | select(.name != "nvme0n1" and .name != "nvme1n1") | .name'
                     """, returnStdout: true).trim().split("\n")
 
                     // Assign the first device to DEVICE_NAME
