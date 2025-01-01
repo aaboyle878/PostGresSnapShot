@@ -272,13 +272,12 @@ pipeline {
                 }
             }
         }
-        stage('Remove Replication Slots') {
+        stage('Remove All Replication Slots (Bash Loop)') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} "psql -d cexplorer -c \"DO \$\$ DECLARE slot RECORD; BEGIN FOR slot IN SELECT slot_name FROM pg_replication_slots LOOP EXECUTE ''SELECT pg_drop_replication_slot('''' || slot.slot_name || ''''');''; END LOOP; END \$\$;"
-                        "
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} 'for slot in \$(psql -d cexplorer -t -c "SELECT slot_name FROM pg_replication_slots WHERE slot_name NOT LIKE ''pg_%'';"); do psql -d cexplorer -c "SELECT pg_drop_replication_slot(''\$slot'');"; done'
                         """
                     }
                 }
