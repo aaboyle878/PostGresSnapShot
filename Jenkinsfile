@@ -218,7 +218,7 @@ pipeline {
                     retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "tar -czf ${TAR_FILE} -C ${BACKUP_DIR} . -C ${LEDGER_DIR} && echo 'Backup tarball created (Includes Ledger State).'"
+                        "tar -czf ${TAR_FILE} -C ${BACKUP_DIR} . -C ${LEDGER_DIR} . && echo 'Backup tarball created (Includes Ledger State).'"
                         """
                     }
                 }
