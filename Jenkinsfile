@@ -95,6 +95,7 @@ pipeline {
 
                             // Attach volume
                             sh """
+                                sleep 10
                                 aws ec2 attach-volume --volume-id ${volumeId} --instance-id ${INSTANCE_ID} --device ${VOLUME_NAME} --region ${AWS_REGION}
                             """
                             echo "Attached EBS Volume: ${volumeId} to instance: ${INSTANCE_ID}"
