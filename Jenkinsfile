@@ -5,6 +5,7 @@ pipeline {
     }
     environment {
         BACKUP_DIR = "/tmp/postgres_backup/snapshot"
+        LEDGER_DIR = "/opt/cardano/cnode/db"
         TAR_FILE = "/tmp/postgres_backup/postgres_backup.tar.gz"
         MOUNT_POINT = "/tmp/postgres_backup"
         VOLUME_NAME = "/dev/sda2"
@@ -217,7 +218,7 @@ pipeline {
                     retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "tar -czf ${TAR_FILE} ${BACKUP_DIR} && echo 'Backup tarball created.'"
+                        "tar -czf ${TAR_FILE} -C ${BACKUP_DIR} . -C ${LEDGER_DIR} . && echo 'Backup tarball created (Includes Ledger State).'"
                         """
                     }
                 }
@@ -269,7 +270,7 @@ pipeline {
                             def backupFile = sh(script: "echo postgres_backup_\$(date +%Y)", returnStdout: true).trim()
                             sh """
                             ssh ubuntu@${EC2_HOST} \\
-                            "aws s3 cp ${TAR_FILE} s3://${S3_BUCKET}/${NETWORK}/${backupFile}.tar.gz --region ${AWS_REGION}"
+                            "aws s3 cp ${TAR_FILE} s3://${S3_BUCKET}/${NETWORK}/${backupFile}_${env.BUILD_NUMBER}.tar.gz --region ${AWS_REGION}"
                             """
                             env.BACKUP_FILE = backupFile
                         }
