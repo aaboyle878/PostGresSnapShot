@@ -1,7 +1,7 @@
 pipeline {
     agent any
     parameters {
-        string(name: 'VOLUME_SIZE', defaultValue: '0', description: 'Size of EBS volume in GB')
+        string(name: 'VOLUME_SIZE', defaultValue: '5', description: 'Size of EBS volume in GB')
     }
     environment {
         BACKUP_DIR = "/tmp/postgres_backup/snapshot"
