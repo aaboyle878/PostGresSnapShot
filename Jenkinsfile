@@ -43,21 +43,6 @@ pipeline {
         stage('Retrieve AWS Session Token') {
             steps {
                 script {
-                    def getToken = {
-                        def token = sh(script: '''
-                            curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: ${TOKEN_TTL_SECONDS}" http://169.254.169.254/latest/api/token
-                        ''', returnStdout: true).trim()
-
-                        if (!token) {
-                            error "Failed to retrieve session token."
-                        }
-
-                        echo "Session Token Retrieved"
-                        env.AWS_METADATA_TOKEN = token
-                        env.TOKEN_CREATION_TIME = System.currentTimeMillis().toString()
-                        return token
-                    }
-
                     // Initial token retrieval
                     getToken()
                 }
@@ -67,20 +52,7 @@ pipeline {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     script {
-                        def creds = sh(script: """
-                            curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${IAM_ROLE}
-                        """, returnStdout: true).trim()
-
-                        // Extract AWS credentials
-                        def accessKeyId = sh(script: "'${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
-                        def secretAccessKey = sh(script: "'${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
-                        def sessionToken = sh(script: "'${creds}' | jq -r .Token", returnStdout: true).trim()
-
-                        // Set the AWS credentials for the session
-                        env.AWS_ACCESS_KEY_ID = accessKeyId
-                        env.AWS_SECRET_ACCESS_KEY = secretAccessKey
-                        env.AWS_SESSION_TOKEN = sessionToken
-
+                        getCred()
                         // Create EBS volume
                         withEnv([
                             "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
@@ -111,9 +83,7 @@ pipeline {
             steps {
                 script {
                     // Fetch metadata token
-                    def metadata_token = sh(script: '''
-                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" http://169.254.169.254/latest/api/token
-                    ''', returnStdout: true).trim()
+                    getToken() 
 
                     // Fetch block device mappings
                     def block_devices = sh(script: """
@@ -227,37 +197,9 @@ pipeline {
         stage('Refresh Token'){
             steps {
                 script {
-                   def getToken = {
-                        def token = sh(script: '''
-                            curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: ${TOKEN_TTL_SECONDS}" http://169.254.169.254/latest/api/token
-                        ''', returnStdout: true).trim()
-
-                        if (!token) {
-                            error "Failed to retrieve session token."
-                        }
-
-                        echo "Session Token Retrieved"
-                        env.AWS_METADATA_TOKEN = token
-                        env.TOKEN_CREATION_TIME = System.currentTimeMillis().toString()
-                        return token
-                    }
-
                     // Token Refresh
                     getToken()
-                    def creds = sh(script: """
-                            curl --silent --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${IAM_ROLE}
-                        """, returnStdout: true).trim()
-
-                        // Extract AWS credentials
-                        def accessKeyId = sh(script: "'${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
-                        def secretAccessKey = sh(script: "'${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
-                        def sessionToken = sh(script: "'${creds}' | jq -r .Token", returnStdout: true).trim()
-
-                        // Set the AWS credentials for the session
-                        env.AWS_ACCESS_KEY_ID = accessKeyId
-                        env.AWS_SECRET_ACCESS_KEY = secretAccessKey
-                        env.AWS_SESSION_TOKEN = sessionToken
-
+                    getCred()
                     echo "Token and credentials refreshed."
                 }
             }
@@ -267,12 +209,18 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(3) {
                         script {
-                            def backupFile = sh(script: "echo postgres_backup_\$(date +%Y)", returnStdout: true).trim()
-                            sh """
-                            ssh ubuntu@${EC2_HOST} \\
-                            "aws s3 cp ${TAR_FILE} s3://${S3_BUCKET}/${NETWORK}/${backupFile}_${env.BUILD_NUMBER}.tar.gz --region ${AWS_REGION}"
-                            """
-                            env.BACKUP_FILE = backupFile
+                            withEnv([
+                            "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
+                            "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
+                            "AWS_SESSION_TOKEN=${env.AWS_SESSION_TOKEN}",
+                            "AWS_REGION=${AWS_REGION}"
+                            ]) {def backupFile = sh(script: "echo postgres_backup_\$(date +%Y)", returnStdout: true).trim()
+                                sh """
+                                ssh ubuntu@${EC2_HOST} \\
+                                "aws s3 cp ${TAR_FILE} s3://${S3_BUCKET}/${NETWORK}/${backupFile}_${env.BUILD_NUMBER}.tar.gz --region ${AWS_REGION}"
+                                """
+                                env.BACKUP_FILE = backupFile
+                            }
                         }
                     }
                 }
@@ -283,12 +231,19 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         script {
-                            def s3_check = sh(script: """
-                            ssh ubuntu@${EC2_HOST} \\
-                            aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${env.BACKUP_FILE}.tar.gz --region ${AWS_REGION}
-                            """, returnStatus: true)
-                            if (s3_check != 0) {
-                                error "S3 upload verification failed."
+                            withEnv([
+                            "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
+                            "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
+                            "AWS_SESSION_TOKEN=${env.AWS_SESSION_TOKEN}",
+                            "AWS_REGION=${AWS_REGION}"
+                        ]) {
+                                def s3_check = sh(script: """
+                                ssh ubuntu@${EC2_HOST} \\
+                                aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${env.BACKUP_FILE}.tar.gz --region ${AWS_REGION}
+                                """, returnStatus: true)
+                                if (s3_check != 0) {
+                                    error "S3 upload verification failed."
+                                }
                             }
                         }
                     }
@@ -350,17 +305,53 @@ pipeline {
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
                 script {
-                    // Clean up
-                    sh """
-                    ssh ubuntu@${EC2_HOST} \\
-                    aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION}
-                    echo "Paused for 30 seconds..."
-                    sleep 30 
-                    aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} 
-                    """
-                    echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
+                    withEnv([
+                            "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
+                            "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
+                            "AWS_SESSION_TOKEN=${env.AWS_SESSION_TOKEN}",
+                            "AWS_REGION=${AWS_REGION}"
+                        ]) {
+                            // Clean up
+                            sh """
+                            ssh ubuntu@${EC2_HOST} \\
+                            aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION}
+                            echo "Paused for 30 seconds..."
+                            sleep 30 
+                            aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} 
+                            """
+                            echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
+                            }
                 }
             }
         }
+    }
+    def getToken() {
+        def token = sh(script: '''
+        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: ${TOKEN_TTL_SECONDS}" http://169.254.169.254/latest/api/token
+        ''', returnStdout: true).trim()
+
+        if (!token) {
+        error "Failed to retrieve session token."
+        }
+
+        echo "Session Token Retrieved"
+        env.AWS_METADATA_TOKEN = token
+        env.TOKEN_CREATION_TIME = System.currentTimeMillis().toString()
+        return token
+        }
+    def getCred() {
+        def creds = sh(script: """
+            curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${IAM_ROLE}
+        """, returnStdout: true).trim()
+
+        // Extract AWS credentials
+        def accessKeyId = sh(script: "'${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
+        def secretAccessKey = sh(script: "'${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
+        def sessionToken = sh(script: "'${creds}' | jq -r .Token", returnStdout: true).trim()
+
+        // Set the AWS credentials for the session
+        env.AWS_ACCESS_KEY_ID = accessKeyId
+        env.AWS_SECRET_ACCESS_KEY = secretAccessKey
+        env.AWS_SESSION_TOKEN = sessionToken
     }
 } 
