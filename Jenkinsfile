@@ -232,7 +232,7 @@ pipeline {
                             def backupFile = sh(script: "echo postgres_backup_\$(date +%Y)", returnStdout: true).trim()
                             sh """
                             ssh ubuntu@${EC2_HOST} \\
-                            "aws s3 cp ${TAR_FILE} s3://${S3_BUCKET}/${NETWORK}/${backupFile}${env.BUILD_NUMBER}.tar.gz --region ${AWS_REGION}"
+                            "aws s3 cp ${TAR_FILE} s3://${S3_BUCKET}/${NETWORK}/${backupFile}_${env.BUILD_NUMBER}.tar.gz --region ${AWS_REGION}"
                             """
                             env.BACKUP_FILE = backupFile
                         }
