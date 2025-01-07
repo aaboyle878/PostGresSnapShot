@@ -248,9 +248,13 @@ pipeline {
                             "AWS_REGION=${AWS_REGION}"
                             ]) {def backupFile = sh(script: "echo postgres_backup_\$(date +%Y)", returnStdout: true).trim()
                                 sh """
-                                ssh ubuntu@${EC2_HOST} \\
-                                "aws s3 cp ${TAR_FILE} s3://${S3_BUCKET}/${NETWORK}/${backupFile}_${env.BUILD_NUMBER}.tar.gz --region ${AWS_REGION}"
+                                    ssh ubuntu@${EC2_HOST} \\
+                                    'export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} && \\
+                                    export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} && \\
+                                    export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN} && \\
+                                    aws s3 cp ${TAR_FILE} s3://${S3_BUCKET}/${NETWORK}/${backupFile}_${env.BUILD_NUMBER}.tar.gz --region ${AWS_REGION}'
                                 """
+
                                 env.BACKUP_FILE = backupFile
                             }
                         }
