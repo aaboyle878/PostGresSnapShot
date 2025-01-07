@@ -240,6 +240,7 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(3) {
                         script {
+                            getCred()
                             withEnv([
                             "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
                             "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
@@ -262,6 +263,7 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         script {
+                            getCred()
                             withEnv([
                             "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
                             "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
@@ -336,6 +338,7 @@ pipeline {
         always {
             sshagent(credentials: ['SSH_KEY_CRED']) {
                 script {
+                    getCred()
                     withEnv([
                             "AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}",
                             "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
