@@ -118,7 +118,7 @@ pipeline {
 
                     // Fetch block device mappings
                     def block_devices = sh(script: """
-                        curl --header "X-aws-ec2-metadata-token: ${metadata_token}" http://169.254.169.254/latest/meta-data/block-device-mapping/
+                        curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/block-device-mapping/
                     """, returnStdout: true).trim()
 
                     // List all block devices with lsblk
