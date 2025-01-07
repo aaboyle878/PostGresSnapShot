@@ -226,10 +226,38 @@ pipeline {
         stage('Refresh Token'){
             steps {
                 script {
-                    // Fetch metadata token
-                    def metadata_token = sh(script: '''
-                        curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" http://169.254.169.254/latest/api/token
-                    ''', returnStdout: true).trim()
+                   def getToken = {
+                        def token = sh(script: '''
+                            curl -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds: ${TOKEN_TTL_SECONDS}" http://169.254.169.254/latest/api/token
+                        ''', returnStdout: true).trim()
+
+                        if (!token) {
+                            error "Failed to retrieve session token."
+                        }
+
+                        echo "Session Token Retrieved"
+                        env.AWS_METADATA_TOKEN = token
+                        env.TOKEN_CREATION_TIME = System.currentTimeMillis().toString()
+                        return token
+                    }
+
+                    // Token Refresh
+                    getToken()
+                    def creds = sh(script: """
+                            curl --header "X-aws-ec2-metadata-token: ${env.AWS_METADATA_TOKEN}" http://169.254.169.254/latest/meta-data/iam/security-credentials/${IAM_ROLE}
+                        """, returnStdout: true).trim()
+
+                        // Extract AWS credentials
+                        def accessKeyId = sh(script: "'${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
+                        def secretAccessKey = sh(script: "'${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
+                        def sessionToken = sh(script: "'${creds}' | jq -r .Token", returnStdout: true).trim()
+
+                        // Set the AWS credentials for the session
+                        env.AWS_ACCESS_KEY_ID = accessKeyId
+                        env.AWS_SECRET_ACCESS_KEY = secretAccessKey
+                        env.AWS_SESSION_TOKEN = sessionToken
+
+                    echo "Token and credentials refreshed."
                 }
             }
         }
