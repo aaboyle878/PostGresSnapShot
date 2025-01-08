@@ -26,6 +26,7 @@ def getCred() {
 
     // Set the AWS credentials for the session
     env.AWS_ACCESS_KEY_ID = accessKeyId
+    echo "Access Key is: ${env.AWS_ACCESS_KEY_ID}"
     env.AWS_SECRET_ACCESS_KEY = secretAccessKey
     env.AWS_SESSION_TOKEN = sessionToken
 }
