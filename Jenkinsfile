@@ -19,11 +19,9 @@ def getCred() {
     """, returnStdout: true).trim()
 
     // Extract AWS credentials
-    wrap([$class: 'MaskPasswordsBuildWrapper']) {
-    def accessKeyId = sh(script: "echo '${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
-    def secretAccessKey = sh(script: "echo '${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
-    def sessionToken = sh(script: "echo '${creds}' | jq -r .Token", returnStdout: true).trim()
-}
+    def accessKeyId = sh(script: "echo '${creds}' | jq -r .AccessKeyId > /dev/null 2>&1", returnStdout: true).trim()
+    def secretAccessKey = sh(script: "echo '${creds}' | jq -r .SecretAccessKey > /dev/null 2>&1", returnStdout: true).trim()
+    def sessionToken = sh(script: "echo '${creds}' | jq -r .Token > /dev/null 2>&1", returnStdout: true).trim()
     echo "Creds: ${creds}"
 
     // Set the AWS credentials for the session
