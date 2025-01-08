@@ -22,6 +22,7 @@ def getCred() {
     def accessKeyId = sh(script: "'${creds}' | jq -r .AccessKeyId", returnStdout: true).trim()
     def secretAccessKey = sh(script: "'${creds}' | jq -r .SecretAccessKey", returnStdout: true).trim()
     def sessionToken = sh(script: "'${creds}' | jq -r .Token", returnStdout: true).trim()
+    echo "Creds: ${creds}"
 
     // Set the AWS credentials for the session
     env.AWS_ACCESS_KEY_ID = accessKeyId
@@ -246,7 +247,8 @@ pipeline {
                             "AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}",
                             "AWS_SESSION_TOKEN=${env.AWS_SESSION_TOKEN}",
                             "AWS_REGION=${AWS_REGION}"
-                            ]) {def backupFile = sh(script: "echo postgres_backup_\$(date +%Y)", returnStdout: true).trim()
+                            ]) {
+                                def backupFile = sh(script: "echo postgres_backup_\$(date +%Y)", returnStdout: true).trim()
                                 sh """
                                     ssh ubuntu@${EC2_HOST} \\
                                     'export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} && \\
