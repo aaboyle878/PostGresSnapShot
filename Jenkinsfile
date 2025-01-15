@@ -94,7 +94,7 @@ pipeline {
                             "AWS_REGION=${AWS_REGION}"
                         ]) {
                             def volumeId = sh(script: """
-                                aws ec2 create-volume --size ${params.VOLUME_SIZE} --volume-type gp2 --availability-zone eu-west-1b --region ${env.AWS_REGION} --query 'VolumeId' --output text
+                                aws ec2 create-volume --size ${params.VOLUME_SIZE} --volume-type gp2 --availability-zone eu-west-1b --region eu-west-1 --query 'VolumeId' --output text
                             """, returnStdout: true).trim()
 
                             echo "Created EBS Volume: ${volumeId}"
