@@ -355,10 +355,10 @@ pipeline {
                             // Clean up
                             sh """
                             ssh ubuntu@${EC2_HOST} \\
-                            aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION}
+                            aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region eu-west-1
                             echo "Paused for 30 seconds..."
                             sleep 30 
-                            aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region ${AWS_REGION} 
+                            aws ec2 delete-volume --volume-id ${env.VOLUME_ID} --region eu-west-1 
                             """
                             echo "Detached and deleted EBS Volume: ${env.VOLUME_ID}"
                             }
