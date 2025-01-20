@@ -355,6 +355,7 @@ pipeline {
                             // Clean up
                             sh """
                             ssh ubuntu@${EC2_HOST} \\
+                            sudo umount -l ${MOUNT_POINT}
                             aws ec2 detach-volume --volume-id ${env.VOLUME_ID} --region eu-west-1
                             echo "Paused for 30 seconds..."
                             sleep 30 
