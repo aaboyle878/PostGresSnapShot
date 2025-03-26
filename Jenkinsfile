@@ -34,7 +34,7 @@ def getCred() {
 pipeline {
     agent any
     parameters {
-        string(name: 'VOLUME_SIZE', defaultValue: '700', description: 'Size of EBS volume in GB')
+        string(name: 'VOLUME_SIZE', defaultValue: '1000', description: 'Size of EBS volume in GB')
     }
     environment {
         BACKUP_DIR = "/tmp/postgres_backup/snapshot"
@@ -163,6 +163,18 @@ pipeline {
                 }
             }
         }
+        stage('Prepare Snapshot Directory') {
+            steps {
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    retry(2) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        "mkdir -p ${BACKUP_DIR} && echo 'Backup directory created or already exists.'"
+                        """
+                    }
+                }
+            }
+        }
         stage('Mount EBS Volume') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
@@ -174,18 +186,6 @@ pipeline {
                         sudo chown -R ubuntu:ubuntu ${MOUNT_POINT} &&
                         sudo chmod -R 755 ${MOUNT_POINT} &&
                         echo 'EBS Successfully Mounted and permissions have been set.'"
-                        """
-                    }
-                }
-            }
-        }
-        stage('Prepare Snapshot Directory') {
-            steps {
-                sshagent(credentials: ['SSH_KEY_CRED']) {
-                    retry(2) {
-                        sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "mkdir -p ${BACKUP_DIR} && echo 'Backup directory created or already exists.'"
                         """
                     }
                 }
