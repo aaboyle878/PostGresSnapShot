@@ -181,7 +181,7 @@ pipeline {
                     retry(2) {
                         sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
-                        "sudo mkfs -t -f xfs ${env.DEVICE_NAME} &&
+                        "sudo mkfs -t xfs ${env.DEVICE_NAME} &&
                         sudo mount ${env.DEVICE_NAME} ${MOUNT_POINT} &&
                         sudo chown -R ubuntu:ubuntu ${MOUNT_POINT} &&
                         sudo chmod -R 755 ${MOUNT_POINT} &&
