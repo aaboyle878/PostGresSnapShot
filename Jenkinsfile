@@ -163,6 +163,18 @@ pipeline {
                 }
             }
         }
+        stage('Prepare Snapshot Directory') {
+            steps {
+                sshagent(credentials: ['SSH_KEY_CRED']) {
+                    retry(2) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        "mkdir -p ${BACKUP_DIR} && echo 'Backup directory created or already exists.'"
+                        """
+                    }
+                }
+            }
+        }
         stage('Mount EBS Volume') {
             steps {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
