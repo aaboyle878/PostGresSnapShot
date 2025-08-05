@@ -77,8 +77,8 @@ pipeline {
             steps {
                 retry(2) {
                 script {
-                    def host = env.EC2_HOST   // pull from Jenkins env once
-                    sh """
+                    def host = env.EC2_HOST
+                    sh """#!/bin/bash
                     set -euo pipefail
 
                     SSH_DIR="\$HOME/.ssh"
