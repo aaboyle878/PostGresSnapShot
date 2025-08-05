@@ -306,7 +306,10 @@ pipeline {
                         ]) {
                                 def s3_check = sh(script: """
                                 ssh ubuntu@${EC2_HOST} \\
-                                aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${env.BACKUP_FILE}_${env.BUILD_NUMBER}.tar.gz --region ${AWS_REGION}
+                                'export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} && \\
+                                export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} && \\
+                                export AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN} && \\
+                                aws s3 ls s3://${S3_BUCKET}/${NETWORK}/${env.BACKUP_FILE}_${env.BUILD_NUMBER}.tar.gz --region ${AWS_REGION}'
                                 """, returnStatus: true)
                                 if (s3_check != 0) {
                                     error "S3 upload verification failed."
