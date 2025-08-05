@@ -73,6 +73,30 @@ pipeline {
                 }
             }
         }
+        stage('Seed SSH known_hosts') {
+            steps {
+                // No need for sshagent here; we're not authenticating yet, just grabbing the host key.
+                retry(2) {
+                sh """
+                    set -euo pipefail
+                    HOST="${EC2_HOST}"
+
+                    # Ensure SSH dir & file exist with safe perms
+                    mkdir -p /root/.ssh
+                    chmod 700 /root/.ssh
+                    touch /root/.ssh/known_hosts
+                    chmod 600 /root/.ssh/known_hosts
+
+                    # Remove any stale entries for host (both raw and [host]:22 forms)
+                    ssh-keygen -f "/root/.ssh/known_hosts" -R "$HOST" || true
+                    ssh-keygen -f "/root/.ssh/known_hosts" -R "[$HOST]:22" || true
+
+                    # Seed current keys (hash hostnames with -H; get all key types)
+                    ssh-keyscan -T 5 -H -t rsa,ecdsa,ed25519 "$HOST" >> /root/.ssh/known_hosts
+                """
+                }
+            }
+        }
         stage('Retrieve AWS Session Token') {
             steps {
                 script {
@@ -127,7 +151,7 @@ pipeline {
                     def remote_device_info = sshagent(credentials: ['SSH_KEY_CRED']) {
                         retry(2) {
                             sh(script: """
-                                ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} 'lsblk -o NAME,TYPE -J'
+                                ssh ubuntu@${EC2_HOST} 'lsblk -o NAME,TYPE -J'
                             """, returnStdout: true).trim()
                         }
                     }
@@ -168,7 +192,7 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        ssh ubuntu@${EC2_HOST} \\
                         "mkdir -p ${BACKUP_DIR} && echo 'Backup directory created or already exists.'"
                         """
                     }
@@ -180,7 +204,7 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        ssh ubuntu@${EC2_HOST} \\
                         "sudo mkfs -t xfs ${env.DEVICE_NAME} &&
                         sudo mount ${env.DEVICE_NAME} ${MOUNT_POINT} &&
                         sudo chown -R ubuntu:ubuntu ${MOUNT_POINT} &&
@@ -196,7 +220,7 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        ssh ubuntu@${EC2_HOST} \\
                         "mkdir -p ${BACKUP_DIR} && echo 'Backup directory created or already exists.'"
                         """
                     }
@@ -208,7 +232,7 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(3) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        ssh ubuntu@${EC2_HOST} \\
                         "pg_basebackup -D ${BACKUP_DIR} -Ft -z -X stream --create-slot --slot=backup_slot -v"
                         """
                     }
@@ -220,7 +244,7 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        ssh ubuntu@${EC2_HOST} \\
                         "test -d ${BACKUP_DIR} && echo 'Backup verification successful.'"
                         """
                     }
@@ -232,7 +256,7 @@ pipeline {
                 sshagent(credentials: ['SSH_KEY_CRED']) {
                     retry(2) {
                         sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \\
+                        ssh ubuntu@${EC2_HOST} \\
                         "tar -czf ${TAR_FILE} -C ${BACKUP_DIR} . -C ${LEDGER_DIR} . && echo 'Backup tarball created (Includes Ledger State).'"
                         """
                     }
@@ -308,7 +332,7 @@ pipeline {
                     retry(5) {
                         sh """
                         sleep 5
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} \
+                        ssh ubuntu@${EC2_HOST} \
                         "psql -d cexplorer -c \\\"SELECT pg_drop_replication_slot('backup_slot');\\\" && echo 'Replication slot removed successfully.'"
                         """
                     }
