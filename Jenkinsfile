@@ -75,25 +75,28 @@ pipeline {
         }
         stage('Seed SSH known_hosts') {
             steps {
-                // No need for sshagent here; we're not authenticating yet, just grabbing the host key.
                 retry(2) {
-                sh """
+                script {
+                    def host = env.EC2_HOST   // pull from Jenkins env once
+                    sh """
                     set -euo pipefail
-                    HOST="${EC2_HOST}"
 
-                    # Ensure SSH dir & file exist with safe perms
-                    mkdir -p /root/.ssh
-                    chmod 700 /root/.ssh
-                    touch /root/.ssh/known_hosts
-                    chmod 600 /root/.ssh/known_hosts
+                    SSH_DIR="\$HOME/.ssh"
+                    KNOWN_HOSTS="\$SSH_DIR/known_hosts"
 
-                    # Remove any stale entries for host (both raw and [host]:22 forms)
-                    ssh-keygen -f "/root/.ssh/known_hosts" -R "$HOST" || true
-                    ssh-keygen -f "/root/.ssh/known_hosts" -R "[$HOST]:22" || true
+                    mkdir -p "\$SSH_DIR"
+                    chmod 700 "\$SSH_DIR"
+                    touch "\$KNOWN_HOSTS"
+                    chmod 600 "\$KNOWN_HOSTS"
 
-                    # Seed current keys (hash hostnames with -H; get all key types)
-                    ssh-keyscan -T 5 -H -t rsa,ecdsa,ed25519 "$HOST" >> /root/.ssh/known_hosts
-                """
+                    # Remove stale entries for the host (both raw and [host]:22 forms)
+                    ssh-keygen -f "\$KNOWN_HOSTS" -R "${host}" || true
+                    ssh-keygen -f "\$KNOWN_HOSTS" -R "[${host}]:22" || true
+
+                    # Seed current keys (hash hostnames with -H; collect common key types)
+                    ssh-keyscan -T 5 -H -t rsa,ecdsa,ed25519 "${host}" >> "\$KNOWN_HOSTS"
+                    """
+                }
                 }
             }
         }
